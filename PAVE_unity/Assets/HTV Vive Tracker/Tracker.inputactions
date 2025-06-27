@@ -1,0 +1,54 @@
+{
+    "name": "Tracker",
+    "maps": [
+        {
+            "name": "Tracker_Right_Elbow",
+            "id": "4e0ce902-18cd-457c-a4c1-8584ebe19372",
+            "actions": [
+                {
+                    "name": "Position",
+                    "type": "Value",
+                    "id": "9ac64a8e-34a5-41bd-a81c-f6fd712f27ae",
+                    "expectedControlType": "Vector3",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Rotation",
+                    "type": "Value",
+                    "id": "cd7c4bab-8b99-4357-ad32-e604c74b7c25",
+                    "expectedControlType": "Quaternion",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "7f19b913-38d2-4211-9ae0-4dc54c294acf",
+                    "path": "<XRViveTracker>{Right Elbow}/devicePosition",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Position",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "56232b35-00be-4a97-a6d1-d2f0ee3db15b",
+                    "path": "<XRViveTracker>{Right Elbow}/deviceRotation",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Rotation",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}
