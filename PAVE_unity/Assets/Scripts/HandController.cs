@@ -5,6 +5,13 @@ using Mujoco;
 using Unity.Collections;
 using UnityEngine;
 
+//public enum HandSelection
+//{
+//    None,
+//    ShadowHand, // to control the shadow hand 
+//    MPL // to control the modular prosthetic limb hand
+//}
+
 public enum DOA
 {
     HOC, // hand open-close
@@ -19,7 +26,8 @@ public enum DOA
     ring, 
     little, 
     wr_ulnar, 
-    wr_radial
+    wr_radial,
+      
 }
 
 [Serializable]
@@ -29,18 +37,7 @@ public struct DOA_mj
     public GameObject[] mj_actuations;
 }
 
-[Serializable]
-/// <summary>
-/// For simulated mocap DOAs (mostly WPS)
-/// </summary>
-public struct DOA_mocap
-{
-    public DOA_struct General;
 
-    public GameObject pointOfAttachGO;
-    public Vector3 localAxis;
-    public Vector2 rangeDeg;
-}
 [Serializable]
 public struct DOA_struct
 {
@@ -49,6 +46,8 @@ public struct DOA_struct
     public bool active;
     public bool EMG_override;
     public float current_value;
+    public Vector2 mapping_in;
+    public Vector2 mapping_out;
 }
 
 
@@ -68,6 +67,7 @@ public class HandController : MonoBehaviour
     // array of degrees of actuation, depending on control, all based on mujoco actuation
     /// </summary>
     public DOA_mj[] DOA_mujoco;
+
 
 
     [SerializeField]
@@ -97,6 +97,20 @@ public class HandController : MonoBehaviour
 
         // Perform actuation
         SetActuation();
+
+
+        // ensure that just the pronation and supination is active, when wpsTask is performed
+        //if (TaskManager.wpsTask)
+        //{
+
+        //    OverwriteCurrVal(DOA.WFE, 0);
+        //    OverwriteCurrVal(DOA.HOC, 0);
+        //}
+        //else
+        //{
+        //    ActivateEMGOverwrite(DOA.WFE);
+        //    ActivateEMGOverwrite(DOA.HOC);
+        //}
     }
 
     public DOA_mj[] GetUdpValues(DOA_mj[] DOA_array, int samplesBack = 0, float timeBack = 0, bool ignoreEMGState = false)
@@ -108,33 +122,27 @@ public class HandController : MonoBehaviour
 
             DOA_array[i].General.current_value = GetCurrentValue(DOA_array[i].General, samplesBack, timeBack);
         }
-
         return DOA_array;
     }
 
 
     private float GetCurrentValue(DOA_struct doa_struct, int samplesBack = 0, float timeBack = 0)
     {
+        // object test = StreamlinedInputManager.udpReceiver.getUdpObjects(0, 1, true);
+        // object test2 = StreamlinedInputManager.udpReceiver.getUdpObjects(0, 1);
         object[] data = null;
         float currentValue = 0;
 
-        // for now hardcoded later => later JSON with syntax
-        if (doa_struct.doa == DOA.HOC || doa_struct.doa == DOA.th_flex || doa_struct.doa == DOA.th_rot || doa_struct.doa == DOA.index || doa_struct.doa == DOA.middle || doa_struct.doa == DOA.ring || doa_struct.doa == DOA.little)
-        {
-            // if nothing was received data is null
-            data = StreamlinedInputManager.udpReceiver.getData(UDPCategory, doa_struct.UDPSubCategory, samplesBack, timeBack);
-            if (data != null) currentValue = Convert.ToSingle(data[0]).Remap(0, 100, -0.1f, 1);
-        }
-        else if (doa_struct.doa == DOA.WFE || doa_struct.doa == DOA.WUD)
-        {
-            data = StreamlinedInputManager.udpReceiver.getData(UDPCategory, doa_struct.UDPSubCategory, samplesBack, timeBack);
-            if (data != null) currentValue = Convert.ToSingle(data[0]).Remap(0, 100, 1, -1);
-        }
-        else if (doa_struct.doa == DOA.WPS)
-        {
-            data = StreamlinedInputManager.udpReceiver.getData(UDPCategory, doa_struct.UDPSubCategory, samplesBack, timeBack);
-            if (data != null) currentValue = Convert.ToSingle(data[0]).Remap(50, 100, -1, 1);
-        }
+        // if nothing was received data is null
+        /// <summary>
+        /// values set in inspector:
+        /// HOC, finger flexions: in(0,100); out(-0.1,1)
+        /// WFE, WUD: in(0,100); out(1,-1)
+        /// WPS: in(50,100); out(-1,1)
+        /// </summary>
+        data = StreamlinedInputManager.udpReceiver.getData(UDPCategory, doa_struct.UDPSubCategory, samplesBack, timeBack);
+        if (data != null) currentValue = Convert.ToSingle(data[0]).Remap(doa_struct.mapping_in.x, doa_struct.mapping_in.y, doa_struct.mapping_out.x, doa_struct.mapping_out.y);
+
 
         return currentValue;
     }
@@ -158,8 +166,6 @@ public class HandController : MonoBehaviour
                 }
             }
         }
-
-       
     }
 
     public void OverwriteCurrVal(DOA doa, float val, bool deactivateEMG = true)
