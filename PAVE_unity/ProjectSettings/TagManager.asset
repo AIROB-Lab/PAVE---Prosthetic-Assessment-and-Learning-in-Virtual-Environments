@@ -3,7 +3,12 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 2
-  tags: []
+  tags:
+  - target_collider
+  - table_collider
+  - object_collider
+  - hand_collider
+  - cupboard
   layers:
   - Default
   - TransparentFX

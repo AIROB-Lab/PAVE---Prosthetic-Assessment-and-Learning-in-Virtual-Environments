@@ -199,7 +199,7 @@ public class StreamlinedInputManager : MonoBehaviour
         // the key is a Int16 composed of the two category bytes sent
         public Dictionary<UInt16, List<UdpObject>> lastReceivedUDPPackets = new Dictionary<UInt16, List<UdpObject>>();
         // public List<UdpObject> allReceivedUDPPackets = new List<UdpObject>(); // clean up this from time to time!
-
+        public double lastReceivedUDPTS = -1;
         public object[] getData(byte category, byte subCategory, int samplesBack = 0, float timeBack = 0)
         {
             if (samplesBack != 0 && timeBack != 0) throw new Exception("Only samples back or time back can be set");
@@ -583,10 +583,12 @@ public class StreamlinedInputManager : MonoBehaviour
     //public static Logging Logger = null;
     public static bool isEyeCallbackWorking;
     public bool receiveUdp;
+    public double lastUdpTimestamp;
     public int availableUDPSamples;
     // public string IP = "127.0.0.1"; default local
     public int port; // define > init
-    public bool trackEyes; public static bool trackEyesCallback;
+    public bool trackEyes; 
+    public static bool trackEyesCallback;
     public static int last_eyeData_size = 100;
 
     public bool trackHead;
@@ -771,6 +773,7 @@ public class StreamlinedInputManager : MonoBehaviour
 
                 // now it should contain it. 
                 udpReceiver.lastReceivedUDPPackets[categoryKey].Add(receivedUdpObject);
+                udpReceiver.lastReceivedUDPTS = receivedUdpObject.timestamp;
 
                 while (udpReceiver.lastReceivedUDPPackets[categoryKey].Count > availableUDPSamples)
                 {

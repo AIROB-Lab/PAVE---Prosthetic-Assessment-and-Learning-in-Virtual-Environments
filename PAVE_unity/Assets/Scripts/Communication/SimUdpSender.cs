@@ -89,7 +89,7 @@ public class SimUdpSender : MonoBehaviour
     /// </summary>
     /// <param name="array"></param> the array to be sent
     /// <param name="dataType">the arbitrary datatype it should be sent as (category, subcategory) so that the recv understands what came in</param>
-    public static void SendArrayAsUDPmessage(double[] array, (byte, byte) dataType)
+    public static void SendArrayAsUDPmessage(double[] array, (byte, byte) dataType, bool sendWithLastUdpTs = false)
     {
         List<byte> dataList = new List<byte>();
 
@@ -100,10 +100,10 @@ public class SimUdpSender : MonoBehaviour
             dataList.AddRange(BitConverter.GetBytes(array[i]));
         }
         // send standardized UDP message
-        SendUDPmessage((byte)array.Length, typeof(double), dataType, dataList.ToArray());
+        SendUDPmessage((byte)array.Length, typeof(double), dataType, dataList.ToArray(), sendWithLastUdpTs);
     }
 
-    public static void SendUDPmessage(byte numCount, Type valType, (byte, byte) dataType, byte[] data)
+    public static void SendUDPmessage(byte numCount, Type valType, (byte, byte) dataType, byte[] data, bool sendWithLastUdpTs = false)
     {
         if (initialised)
         {
@@ -115,7 +115,11 @@ public class SimUdpSender : MonoBehaviour
                 dataType.Item1,
                 dataType.Item2,
             };
-            udpMessage.AddRange(BitConverter.GetBytes(StreamlinedInputManager.Now));
+            // can make less computational effort for matching if same timestamps are used, even though small shifts in time can occur depending on UDP sampling frequency
+            if(sendWithLastUdpTs) udpMessage.AddRange(BitConverter.GetBytes(StreamlinedInputManager.udpReceiver.lastReceivedUDPTS));
+            // otherwise use current one
+            else udpMessage.AddRange(BitConverter.GetBytes(StreamlinedInputManager.Now));
+
             udpMessage.AddRange(data);
             udpMessage.AddRange(BitConverter.GetBytes(UDP_counter));
 
