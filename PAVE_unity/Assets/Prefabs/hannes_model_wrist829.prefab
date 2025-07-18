@@ -243,7 +243,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -919,8 +919,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 741768709346690713}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.6123725, y: -0.3535533, z: -0.6178503, w: -0.34389096}
-  m_LocalPosition: {x: 2.223, y: 0.58919996, z: 1.4979999}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1285,7 +1285,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -1587,7 +1587,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -1753,7 +1753,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -2238,7 +2238,7 @@ MonoBehaviour:
   CommonParams:
     CtrlLimited: 1
     ForceLimited: 1
-    CtrlRange: {x: -2, y: 2}
+    CtrlRange: {x: -1.570795, y: 1.570795}
     ForceRange: {x: -10, y: 10}
     LengthRange: {x: 0, y: 0}
     Gear:
@@ -2482,7 +2482,7 @@ MonoBehaviour:
   CommonParams:
     CtrlLimited: 1
     ForceLimited: 1
-    CtrlRange: {x: -2, y: 2}
+    CtrlRange: {x: -1, y: 1}
     ForceRange: {x: -10, y: 10}
     LengthRange: {x: 0, y: 0}
     Gear:
@@ -3114,7 +3114,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -3410,7 +3410,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -3836,7 +3836,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -4046,7 +4046,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -4784,8 +4784,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4737347877656173622}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.6434223, y: 0.35866654, z: -0.5854459, w: -0.33855453}
-  m_LocalPosition: {x: 2.2199311, y: 0.5948414, z: 1.5146358}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -4794,7 +4794,7 @@ Transform:
   - {fileID: 2297957671775490166}
   - {fileID: 5659968627768511658}
   m_Father: {fileID: 1106897186430464112}
-  m_LocalEulerAnglesHint: {x: -238.829, y: 279.482, z: 7.2299957}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2777992284257682824
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5238,7 +5238,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -5596,7 +5596,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -5844,7 +5844,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -6132,7 +6132,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -6295,7 +6295,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -6982,8 +6982,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 517cde9d618b143a19f0ad61355a7f31, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  RangeLower: -57
-  RangeUpper: 57
+  RangeLower: -90
+  RangeUpper: 90
   Configuration: 0
   Velocity: 0
   RawConfiguration: 0
@@ -7183,7 +7183,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -7557,8 +7557,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8025323822272972070}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.6434223, y: 0.35866654, z: -0.5854459, w: -0.33855453}
-  m_LocalPosition: {x: 2.2199314, y: 0.59484106, z: 1.5146356}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -7583,7 +7583,7 @@ MonoBehaviour:
   lerpPos: 10
   lerpQuat: 0.025
   followDist: 1.2
-  followAng: 10
+  followAng: 30
   offsetPos_loc: {x: 0, y: 0.05, z: -0.05}
   offsetEuler: {x: 250, y: 180, z: 0}
   HandFollowValid: 0

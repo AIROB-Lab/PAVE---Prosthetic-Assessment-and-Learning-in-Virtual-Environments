@@ -27,7 +27,6 @@ public enum DOA
     little, 
     wr_ulnar, 
     wr_radial,
-      
 }
 
 [Serializable]
