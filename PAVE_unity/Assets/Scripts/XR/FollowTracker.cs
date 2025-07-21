@@ -10,15 +10,16 @@ public class FollowTracker : MonoBehaviour
 {
     public GameObject leadingObject;
 
-    public GameObject weldGeometry;
-    public GameObject counterMujoco;
-
     public float lerpPos;
     public float lerpQuat;
     public float followDist;
     public float followAng;
     public Vector3 offsetPos_loc;
     public Vector3 offsetEuler;
+
+    public bool offsetInGlobal;
+    public bool faceCamera;
+
 
     public bool HandFollowValid = false;
 
@@ -36,8 +37,29 @@ public class FollowTracker : MonoBehaviour
         // only start tracking after a set amount of time
         if (!trackingStarted) return;
 
-        Vector3 targetPos = leadingObject.transform.position + leadingObject.transform.rotation * offsetPos_loc;
-        Quaternion targetRot = leadingObject.transform.rotation * Quaternion.Euler(offsetEuler);
+        Vector3 targetPos = new();
+        Quaternion targetRot = new();
+
+        // adjust position
+        if (!offsetInGlobal)
+        {
+            targetPos = leadingObject.transform.position + leadingObject.transform.rotation * offsetPos_loc;
+        }
+        else
+        {
+            targetPos = leadingObject.transform.position + offsetPos_loc;
+        }
+
+        // adjust rotation
+        targetRot = leadingObject.transform.rotation * Quaternion.Euler(offsetEuler);
+
+        if (faceCamera)
+        {
+            Vector3 direction = Camera.main.transform.position - leadingObject.transform.position;
+            direction.y = 0; // Optional: lock rotation to Y axis only
+            targetRot = Quaternion.LookRotation(direction);
+
+        }
 
         if ((this.transform.position - targetPos).magnitude < followDist && Quaternion.Angle(this.transform.rotation, targetRot) < followAng)
         {
