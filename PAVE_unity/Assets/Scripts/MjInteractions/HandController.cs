@@ -207,6 +207,16 @@ public class HandController : MonoBehaviour
     {
         DelayInSeconds = 0; DelayInSamples = 0;
     }
+
+    public float? GetValueForDOA(DOA key)
+    {
+        foreach (var item in DOA_mujoco)
+        {
+            if (item.General.doa == key) return item.General.current_value;
+        }
+
+        return null;
+    }
 }
 
 // From https://forum.unity.com/threads/re-map-a-number-from-one-range-to-another.119437/
