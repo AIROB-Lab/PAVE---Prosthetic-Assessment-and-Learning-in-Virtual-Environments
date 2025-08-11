@@ -456,6 +456,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fad4fd66ee4d81e4a82fd5266218db4b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  Name: 
   hand: {fileID: 0}
   UDPCategory: 1
   DOA_mujoco:
@@ -5705,7 +5706,7 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.047190536
+  m_Radius: 0.05
   m_Height: 0.10850712
   m_Direction: 1
   m_Center: {x: -0.069012456, y: 0.12834565, z: 0.05382227}
@@ -7578,14 +7579,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   leadingObject: {fileID: 0}
-  weldGeometry: {fileID: 3455114037928982387}
-  counterMujoco: {fileID: 5803105294918249385}
   lerpPos: 10
   lerpQuat: 0.025
   followDist: 1.2
   followAng: 30
   offsetPos_loc: {x: 0, y: 0.05, z: -0.05}
   offsetEuler: {x: 250, y: 180, z: 0}
+  offsetInGlobal: 0
+  faceCamera: 0
   HandFollowValid: 0
 --- !u!1 &8097848755543464219
 GameObject:

@@ -12,6 +12,7 @@ using UnityEngine;
 //    MPL // to control the modular prosthetic limb hand
 //}
 
+[Serializable]
 public enum DOA
 {
     HOC, // hand open-close
@@ -52,6 +53,10 @@ public struct DOA_struct
 
 public class HandController : MonoBehaviour
 {
+    /// <summary>
+    /// Just for kepping multiple hand controllers apart
+    /// </summary>
+    public string Name;
     /// <summary>
     /// Gameobject Hand => Irrelevant, just for keeping an overview
     /// </summary>
@@ -119,13 +124,13 @@ public class HandController : MonoBehaviour
             // next if emg override is disabled
             if (!DOA_array[i].General.EMG_override && !ignoreEMGState) continue;
 
-            DOA_array[i].General.current_value = GetCurrentValue(DOA_array[i].General, samplesBack, timeBack);
+            DOA_array[i].General.current_value = GetCurrentValueFromSIM(DOA_array[i].General, samplesBack, timeBack);
         }
         return DOA_array;
     }
 
 
-    private float GetCurrentValue(DOA_struct doa_struct, int samplesBack = 0, float timeBack = 0)
+    private float GetCurrentValueFromSIM(DOA_struct doa_struct, int samplesBack = 0, float timeBack = 0)
     {
         // object test = StreamlinedInputManager.udpReceiver.getUdpObjects(0, 1, true);
         // object test2 = StreamlinedInputManager.udpReceiver.getUdpObjects(0, 1);
@@ -140,7 +145,7 @@ public class HandController : MonoBehaviour
         /// WPS: in(50,100); out(-1,1)
         /// </summary>
         data = StreamlinedInputManager.udpReceiver.getData(UDPCategory, doa_struct.UDPSubCategory, samplesBack, timeBack);
-        if (data != null) currentValue = Convert.ToSingle(data[0]).Remap(doa_struct.mapping_in.x, doa_struct.mapping_in.y, doa_struct.mapping_out.x, doa_struct.mapping_out.y);
+        if (data != null) currentValue = RemapDOA(Convert.ToSingle(data[0]), doa_struct, false); //currentValue = Convert.ToSingle(data[0]).Remap(doa_struct.mapping_in.x, doa_struct.mapping_in.y, doa_struct.mapping_out.x, doa_struct.mapping_out.y);
 
 
         return currentValue;
@@ -161,7 +166,7 @@ public class HandController : MonoBehaviour
                 }
                 else
                 {
-                    mjActuator.Control = doa.General.current_value.Remap(-1, 0, mjActuator.CommonParams.CtrlRange.x, 0);
+                    mjActuator.Control = doa.General.current_value.Remap(-1, 0, mjActuator.CommonParams.CtrlRange.x, 0  );
                 }
             }
         }
@@ -208,16 +213,35 @@ public class HandController : MonoBehaviour
         DelayInSeconds = 0; DelayInSamples = 0;
     }
 
-    public float? GetValueForDOA(DOA key)
+    public float? GetValueForDOA(DOA key, bool RemappedToInRg = false)
     {
         foreach (var item in DOA_mujoco)
         {
-            if (item.General.doa == key) return item.General.current_value;
+            if (item.General.doa == key)
+            {
+                if (!RemappedToInRg) return item.General.current_value;
+                else
+                {
+                    return RemapDOA(item.General.current_value, doaStruct: item.General, backward: true); // ToDo check again if this works
+                }
+            }
         }
 
         return null;
     }
+
+    public float RemapDOA(float value, DOA_struct doaStruct, bool backward = false)
+    {
+        float currentValue;
+        if (!backward) currentValue = Convert.ToSingle(value).Remap(doaStruct.mapping_in.x, doaStruct.mapping_in.y, doaStruct.mapping_out.x, doaStruct.mapping_out.y);
+        else currentValue = Convert.ToSingle(value).Remap(doaStruct.mapping_out.x, doaStruct.mapping_out.y, doaStruct.mapping_in.x, doaStruct.mapping_in.y);
+
+        return currentValue;
+    
+    }
 }
+
+
 
 // From https://forum.unity.com/threads/re-map-a-number-from-one-range-to-another.119437/
 public static class ExtensionMethods
