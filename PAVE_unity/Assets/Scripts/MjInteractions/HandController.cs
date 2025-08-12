@@ -230,6 +230,13 @@ public class HandController : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// Adjust a value based on the range of the DOA., e.g. HOC sometimes only has 0,1
+    /// </summary>
+    /// <param name="value"></param>
+    /// <param name="doaStruct"></param>
+    /// <param name="backward"></param>
+    /// <returns></returns>
     public float RemapDOA(float value, DOA_struct doaStruct, bool backward = false)
     {
         float currentValue;

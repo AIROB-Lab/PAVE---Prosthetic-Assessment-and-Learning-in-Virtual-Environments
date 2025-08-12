@@ -26,8 +26,8 @@ public class DofDiffViz : MonoBehaviour
     void Update()
     {
         // get current stats for this doa
-        float actual =  hil_manager.currentStats.diffDOAs[doa].actual;
-        float should =  hil_manager.currentStats.diffDOAs[doa].should;
+        float actual =  hil_manager.currentStats.activeDiffDOAs[doa].actual;
+        float should =  hil_manager.currentStats.activeDiffDOAs[doa].should;
 
         if (VizRemapRange)
         {

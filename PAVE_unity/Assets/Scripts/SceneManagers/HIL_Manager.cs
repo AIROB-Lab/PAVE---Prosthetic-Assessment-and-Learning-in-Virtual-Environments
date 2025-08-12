@@ -8,6 +8,7 @@ using System.Linq.Expressions;
 using System.Net.NetworkInformation;
 using Unity.VisualScripting;
 using Unity.XR.CoreUtils;
+using Unity.XR.Oculus;
 using UnityEngine;
 using static PastaBoxManager;
 
@@ -40,7 +41,7 @@ public class HIL_Manager : MonoBehaviour
         Release
     }
 
-    public class TaskConfig
+    public class InteractTaskConfig
     {
         public enum TbOris
         {
@@ -60,12 +61,12 @@ public class HIL_Manager : MonoBehaviour
 
         public bool tbTouched;
 
-        public TaskConfig(GameObject startShelf, TbOris startPose, float tbYRotationStart,GameObject targetShelf, TbOris targetPose, float tbYRotationTarget)
+        public InteractTaskConfig(GameObject startShelf, TbOris startPose, float tbYRotationStart, GameObject targetShelf, TbOris targetPose, float tbYRotationTarget)
         {
             this.startShelf = startShelf;
             this.startPose = startPose;
             this.tbYRotationStart = tbYRotationStart;
-            
+
             this.targetShelf = targetShelf;
             this.targetPose = targetPose;
             this.tbYRotationTarget = tbYRotationTarget;
@@ -80,13 +81,13 @@ public class HIL_Manager : MonoBehaviour
         public Vector3 hdToTarget = new();
         public Vector3 hdToStart = new();
 
-        public Dictionary<DOA, diffDOA> diffDOAs = new();
+        public Dictionary<DOA, diffDOA> activeDiffDOAs = new();
 
         public Stats(DOA[] doas)
         {
             foreach (DOA doa in doas)
             {
-                diffDOAs.Add(doa, new diffDOA(doa, -1, -1));
+                activeDiffDOAs.Add(doa, new diffDOA(doa, -1, -1));
             }
         }
 
@@ -97,7 +98,7 @@ public class HIL_Manager : MonoBehaviour
             output += $"Dist HdToStart: {Math.Round(hdToStart.magnitude, 2)} (x: {Math.Round(hdToStart.x, 2)}, y: {Math.Round(hdToStart.y, 2)}, z: {Math.Round(hdToStart.z, 2)}) [m]" +
                 $"\r\nDist HdToTargt: {Math.Round(hdToTarget.magnitude, 2)} (x: {Math.Round(hdToTarget.x, 2)}, y: {Math.Round(hdToTarget.y, 2)}, z: {Math.Round(hdToTarget.z, 2)}) [m]\r\n\r\n";
 
-            foreach (var doadiff in diffDOAs)
+            foreach (var doadiff in activeDiffDOAs)
             {
                 output += $"Diff {doadiff.Value.doa}: {Math.Round(doadiff.Value.diff, 2)} (a: {Math.Round(doadiff.Value.actual, 2)} / s: {Math.Round(doadiff.Value.should, 2)})\r\n";
             }
@@ -120,7 +121,7 @@ public class HIL_Manager : MonoBehaviour
                 this.doa = doa;
                 this.should = should;
                 this.actual = actual;
-                this.diff = should-actual;
+                this.diff = should - actual;
             }
         }
     }
@@ -136,7 +137,7 @@ public class HIL_Manager : MonoBehaviour
 
     public enum Shelf
     {
-        bot, 
+        bot,
         mid,
         top
     }
@@ -144,7 +145,7 @@ public class HIL_Manager : MonoBehaviour
     public HIL_mode currentMode;
     public HIL_env currentEnv;
 
-    public TaskConfig currentTaskConfig;
+    public InteractTaskConfig currentInteractTaskConfig;
     public HIL_phases currentPhase;
     public Stats currentStats;
 
@@ -169,10 +170,11 @@ public class HIL_Manager : MonoBehaviour
     private float RELEASE_DISTANCE;
     [SerializeField]
     bool RemapStatsToIncomingRange;
+    [SerializeField]
 
     public PseudoFeedbackConfig[] pseudoFeedbackConfig;
 
-    
+
     private void Awake()
     {
         // create stats obj
@@ -189,10 +191,13 @@ public class HIL_Manager : MonoBehaviour
             .Where(c => c.enabled)
             .ToArray()[0];
 
-        // get all cupboards
-        cupboards = GameObject.FindGameObjectsWithTag("cupboard");
-        cupboards = cupboards.OrderBy(go => go.name).ToArray();
 
+        if (currentEnv == HIL_env.Interact || currentEnv == HIL_env.LimbPos)
+        {
+            // get all cupboards
+            cupboards = GameObject.FindGameObjectsWithTag("cupboard");
+            cupboards = cupboards.OrderBy(go => go.name).ToArray();
+        }
         currentPhase = HIL_phases.None;
     }
 
@@ -201,7 +206,7 @@ public class HIL_Manager : MonoBehaviour
     void Update()
     {
         // it is still null the first time
-        if (currentTaskConfig != null)
+        if ((currentEnv == HIL_env.Interact && currentInteractTaskConfig != null) || (currentEnv != HIL_env.Interact))
         {
             // update current stats
             UpdateStats();
@@ -210,13 +215,35 @@ public class HIL_Manager : MonoBehaviour
             SendPseudoLabelToLibEMG();
         }
 
+        switch (currentEnv)
+        {
+            case HIL_env.TAC:
+                PerformTacLoop();
+                break;
+            case HIL_env.LimbPos:
+                PerformLimbPosLoop();
+                break;
+            case HIL_env.Interact:
+                PerformInteractLoop();
+                break;
+            default:
+                break;
+        }
+
+
+
+
+    }
+
+    private void PerformInteractLoop()
+    {
         // ----- START OF HIL PHASES ----- // ToDo?: Event-based instead of checking every cycle
         switch (currentPhase)
         {
             case HIL_phases.None:
 
                 // Start new random task config
-                this.NewRandomTaskConf();
+                this.NewRandomInteractTaskConf();
 
                 // move to next phase
                 currentPhase = HIL_phases.Reach;
@@ -242,7 +269,7 @@ public class HIL_Manager : MonoBehaviour
             case HIL_phases.Grasp:
 
                 // Check if TB does not touch plate anymore => Switch to transport
-                if (CollisionManager.FindCollisionByNames("Grasp_collider_box", currentTaskConfig.startShelf.name, contains: true).Count == 0)
+                if (CollisionManager.FindCollisionByNames("Grasp_collider_box", currentInteractTaskConfig.startShelf.name, contains: true).Count == 0)
                 {
                     currentPhase = HIL_phases.Transport;
 
@@ -254,12 +281,12 @@ public class HIL_Manager : MonoBehaviour
                 // check if object was touched already 
                 if (CollisionManager.FindCollisionBetweenTagAndObj("hand_collider", "ROI_collider_box").Count > 0)
                 {
-                    currentTaskConfig.tbTouched = true;
+                    currentInteractTaskConfig.tbTouched = true;
                 }
 
                 // TODO find out if new new target should be set when user fails to grasp it correctly
                 // Check for fails (when Hand leaves Grasp_collider_box after initial contact e.g. the object falls over etc)
-                if (currentTaskConfig.tbTouched && CollisionManager.FindCollisionBetweenTagAndObj("hand_collider", "Grasp_collider_box").Count == 0)
+                if (currentInteractTaskConfig.tbTouched && CollisionManager.FindCollisionBetweenTagAndObj("hand_collider", "Grasp_collider_box").Count == 0)
                 {
                     print("phase: Object is not connected to hand anymore in Grasp phase");
                     // Go to None
@@ -305,12 +332,44 @@ public class HIL_Manager : MonoBehaviour
                 break;
 
             default:
-                
+
                 break;
         }
-
     }
 
+    private void PerformLimbPosLoop()
+    {
+        throw new NotImplementedException();
+    }
+    public double timoutTime;
+    double timoutStart;
+    private void PerformTacLoop()
+    {
+        // ----- START OF HIL PHASES ----- Only None and Reach
+        switch (currentPhase)
+        {
+            case HIL_phases.None:
+
+                // Start new random task config
+                this.NewRandomTacTaskConf();
+
+                // move to next phase
+                currentPhase = HIL_phases.Reach;
+
+                // add other things that need to be set up for Reach...
+                timoutStart = StreamlinedInputManager.Now;
+
+                break;
+
+            case HIL_phases.Reach:
+
+                // if timout or target reach generate new one => just timout for now
+                if (StreamlinedInputManager.Now - timoutStart > timoutTime) currentPhase = HIL_phases.None;
+
+                break;
+
+        }
+    }
 
     private GameObject GetShelfOfCupboard(GameObject cupboard, Shelf shelf)
     {
@@ -319,11 +378,14 @@ public class HIL_Manager : MonoBehaviour
 
     private void UpdateStats()
     {
-        // update stats
-        currentStats.hdToStart = currentTaskConfig.startShelf.transform.position - palmGeom.transform.position;
-        currentStats.hdToTarget = currentTaskConfig.targetShelf.transform.position - palmGeom.transform.position;
+        if ((currentEnv == HIL_env.Interact) || (currentEnv == HIL_env.LimbPos))
+        {
+            // update stats
+            currentStats.hdToStart = currentInteractTaskConfig.startShelf.transform.position - palmGeom.transform.position;
+            currentStats.hdToTarget = currentInteractTaskConfig.targetShelf.transform.position - palmGeom.transform.position;
+        }
 
-        var keys = currentStats.diffDOAs.Keys.ToArray();
+        var keys = currentStats.activeDiffDOAs.Keys.ToArray();
         foreach (var key in keys)
         {
             float? should = GhstHandController.GetValueForDOA(key, currentStats.RemapToIncomingRange);
@@ -333,7 +395,7 @@ public class HIL_Manager : MonoBehaviour
             if (should != null)
             {
                 // get should and actual // ToDo? Change to update instead of always creating new object
-                currentStats.diffDOAs[key] = new Stats.diffDOA(key, should.Value, actual.Value);
+                currentStats.activeDiffDOAs[key] = new Stats.diffDOA(key, should.Value, actual.Value);
             }
         }
     }
@@ -347,8 +409,8 @@ public class HIL_Manager : MonoBehaviour
             {
                 // ------------ ToDO to be made nicer --------------------
                 // hardcoded pseudolabel structure for libEMG as one array
-                double[] message = { currentStats.diffDOAs[DOA.HOC].actual, currentStats.diffDOAs[DOA.HOC].should, currentStats.diffDOAs[DOA.WFE].actual,
-                currentStats.diffDOAs[DOA.WFE].should, currentStats.diffDOAs[DOA.WPS].actual, currentStats.diffDOAs[DOA.WPS].should };
+                double[] message = { currentStats.activeDiffDOAs[DOA.HOC].actual, currentStats.activeDiffDOAs[DOA.HOC].should, currentStats.activeDiffDOAs[DOA.WFE].actual,
+                currentStats.activeDiffDOAs[DOA.WFE].should, currentStats.activeDiffDOAs[DOA.WPS].actual, currentStats.activeDiffDOAs[DOA.WPS].should };
                 //Send Stats
                 SimUdpSender.SendArrayAsUDPmessage(array: message, dataType: (6, 0), sendWithLastUdpTs: true);
                 //print(string.Join(",", message));
@@ -358,16 +420,16 @@ public class HIL_Manager : MonoBehaviour
 
     private IEnumerator TransformGhostHdToTarget()
     {
-        if (currentTaskConfig.targetPose == TaskConfig.TbOris.straight)
+        if (currentInteractTaskConfig.targetPose == InteractTaskConfig.TbOris.straight)
         {
             // as long as this does not make any problems, set pos and ori directly
-            this.shdwTb_weld.transform.position = currentTaskConfig.targetShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
+            this.shdwTb_weld.transform.position = currentInteractTaskConfig.targetShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
 
             // set TB orientation 
-            this.shdwTb_weld.transform.rotation = currentTaskConfig.targetShelf.transform.rotation * Quaternion.Euler(0, currentTaskConfig.tbYRotationTarget, 0);
+            this.shdwTb_weld.transform.rotation = currentInteractTaskConfig.targetShelf.transform.rotation * Quaternion.Euler(0, currentInteractTaskConfig.tbYRotationTarget, 0);
 
             // rotate WFE in the other direction to counterbalance
-            GhstHandController.OverwriteCurrVal(DOA.WFE, -currentTaskConfig.tbYRotationTarget * Mathf.Deg2Rad);
+            GhstHandController.OverwriteCurrVal(DOA.WFE, -currentInteractTaskConfig.tbYRotationTarget * Mathf.Deg2Rad);
 
             // rotate WPS back to 0
             GhstHandController.OverwriteCurrVal(DOA.WPS, 0);
@@ -376,22 +438,22 @@ public class HIL_Manager : MonoBehaviour
             GhstHandController.OverwriteCurrVal(DOA.HOC, 0);
 
         }
-        else if (currentTaskConfig.targetPose == TaskConfig.TbOris.sideways)
+        else if (currentInteractTaskConfig.targetPose == InteractTaskConfig.TbOris.sideways)
         {
             // rotate kinematic chain
-            this.shdwTb_weld.transform.rotation = currentTaskConfig.targetShelf.transform.rotation * Quaternion.Euler(45, 0, 90);
+            this.shdwTb_weld.transform.rotation = currentInteractTaskConfig.targetShelf.transform.rotation * Quaternion.Euler(45, 0, 90);
 
 
             // change position and adjust for rotation
-            this.shdwTb_weld.transform.position = currentTaskConfig.targetShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
+            this.shdwTb_weld.transform.position = currentInteractTaskConfig.targetShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
 
             // rotate WPS into supination to counterbalance
             GhstHandController.OverwriteCurrVal(DOA.WPS, 1);
 
             // actuate WFE to get straight arm adjusted to cupboard level
-            if (currentTaskConfig.targetShelf.name.Contains("bot")) GhstHandController.OverwriteCurrVal(DOA.WFE, 0);
-            else if (currentTaskConfig.targetShelf.name.Contains("mid")) GhstHandController.OverwriteCurrVal(DOA.WFE, 0.5f);
-            else if (currentTaskConfig.targetShelf.name.Contains("top")) GhstHandController.OverwriteCurrVal(DOA.WFE, 1);
+            if (currentInteractTaskConfig.targetShelf.name.Contains("bot")) GhstHandController.OverwriteCurrVal(DOA.WFE, 0);
+            else if (currentInteractTaskConfig.targetShelf.name.Contains("mid")) GhstHandController.OverwriteCurrVal(DOA.WFE, 0.5f);
+            else if (currentInteractTaskConfig.targetShelf.name.Contains("top")) GhstHandController.OverwriteCurrVal(DOA.WFE, 1);
 
 
         }
@@ -401,38 +463,38 @@ public class HIL_Manager : MonoBehaviour
 
     private IEnumerator TransformGhostToStart()
     {
-        if (currentTaskConfig.startPose == TaskConfig.TbOris.straight)
+        if (currentInteractTaskConfig.startPose == InteractTaskConfig.TbOris.straight)
         {
             // as long as this does not make any problems, set pos and ori directly
-            this.shdwTb_weld.transform.position = currentTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
+            this.shdwTb_weld.transform.position = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
 
             // set TB orientation 
-            this.shdwTb_weld.transform.rotation = currentTaskConfig.startShelf.transform.rotation * Quaternion.Euler(0, currentTaskConfig.tbYRotationStart, 0);
+            this.shdwTb_weld.transform.rotation = currentInteractTaskConfig.startShelf.transform.rotation * Quaternion.Euler(0, currentInteractTaskConfig.tbYRotationStart, 0);
 
             // rotate WFE in the other direction to counterbalance
-            GhstHandController.OverwriteCurrVal(DOA.WFE, -currentTaskConfig.tbYRotationStart * Mathf.Deg2Rad);
+            GhstHandController.OverwriteCurrVal(DOA.WFE, -currentInteractTaskConfig.tbYRotationStart * Mathf.Deg2Rad);
 
             // rotate WPS back to 0
             GhstHandController.OverwriteCurrVal(DOA.WPS, 0);
 
         }
-        else if (currentTaskConfig.startPose == TaskConfig.TbOris.sideways)
+        else if (currentInteractTaskConfig.startPose == InteractTaskConfig.TbOris.sideways)
         {
             // rotate kinematic chain
-            this.shdwTb_weld.transform.rotation = currentTaskConfig.startShelf.transform.rotation * Quaternion.Euler(45, 0, 90);
+            this.shdwTb_weld.transform.rotation = currentInteractTaskConfig.startShelf.transform.rotation * Quaternion.Euler(45, 0, 90);
 
 
             // change position and adjust for rotation
-            this.shdwTb_weld.transform.position = currentTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
+            this.shdwTb_weld.transform.position = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
 
             // rotate WPS into supination to counterbalance
             GhstHandController.OverwriteCurrVal(DOA.WPS, 90 * Mathf.Deg2Rad);
 
             //GhstHandController.OverwriteCurrVal(DOA.WFE, 57f * Mathf.Deg2Rad);
             // actuate WFE to get straight arm adjusted to cupboard level
-            if (currentTaskConfig.targetShelf.name.Contains("bot")) GhstHandController.OverwriteCurrVal(DOA.WFE, 0);
-            else if (currentTaskConfig.targetShelf.name.Contains("mid")) GhstHandController.OverwriteCurrVal(DOA.WFE, 0.5f);
-            else if (currentTaskConfig.targetShelf.name.Contains("top")) GhstHandController.OverwriteCurrVal(DOA.WFE, 1);
+            if (currentInteractTaskConfig.targetShelf.name.Contains("bot")) GhstHandController.OverwriteCurrVal(DOA.WFE, 0);
+            else if (currentInteractTaskConfig.targetShelf.name.Contains("mid")) GhstHandController.OverwriteCurrVal(DOA.WFE, 0.5f);
+            else if (currentInteractTaskConfig.targetShelf.name.Contains("top")) GhstHandController.OverwriteCurrVal(DOA.WFE, 1);
         }
 
         // Close around TB
@@ -447,21 +509,21 @@ public class HIL_Manager : MonoBehaviour
         Vector3 newPos = new();
         Quaternion newRot = new();
 
-        if (currentTaskConfig.startPose == TaskConfig.TbOris.straight)
+        if (currentInteractTaskConfig.startPose == InteractTaskConfig.TbOris.straight)
         {
             // as long as this does not make any problems, set pos and ori directly // using shdwTb geom because it consists of a single box
-            newPos = currentTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y+0.1f, 0);
+            newPos = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y+0.1f, 0);
 
             // set TB orientation 
-            newRot = currentTaskConfig.startShelf.transform.rotation * Quaternion.Euler(0, currentTaskConfig.tbYRotationStart, 0);
+            newRot = currentInteractTaskConfig.startShelf.transform.rotation * Quaternion.Euler(0, currentInteractTaskConfig.tbYRotationStart, 0);
         }
-        else if (currentTaskConfig.startPose == TaskConfig.TbOris.sideways)
+        else if (currentInteractTaskConfig.startPose == InteractTaskConfig.TbOris.sideways)
         {
             // rotate kinematic chain
-            newRot = currentTaskConfig.startShelf.transform.rotation * Quaternion.Euler(45, 0, 90);
+            newRot = currentInteractTaskConfig.startShelf.transform.rotation * Quaternion.Euler(45, 0, 90);
 
             // change position and adjust for rotation
-            newPos = currentTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y+0.1f, 0);
+            newPos = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y+0.1f, 0);
         }
         MeshRenderer[] meshRenderer = TB.transform.GetComponentsInChildren<MeshRenderer>();
         for (int i = 0; i < meshRenderer.Length; i++) meshRenderer[i].enabled = false;
@@ -474,7 +536,7 @@ public class HIL_Manager : MonoBehaviour
         yield return null;
     }
 
-    public (GameObject, TaskConfig.TbOris, float) CreateRandomConf(GameObject excludedShelf = null)
+    public (GameObject, InteractTaskConfig.TbOris, float) CreateRandomInteractConf(GameObject excludedShelf = null)
     {
         // get cupboard
         GameObject cupboard = cupboards[UnityEngine.Random.Range(0, cupboards.Length)];
@@ -491,8 +553,8 @@ public class HIL_Manager : MonoBehaviour
 
 
         // create random pose and z rotation
-        int orisLen = Enum.GetValues(typeof(TaskConfig.TbOris)).Length;
-        TaskConfig.TbOris ori = (TaskConfig.TbOris)UnityEngine.Random.Range(0, orisLen);
+        int orisLen = Enum.GetValues(typeof(InteractTaskConfig.TbOris)).Length;
+        InteractTaskConfig.TbOris ori = (InteractTaskConfig.TbOris)UnityEngine.Random.Range(0, orisLen);
 
         // ToDo: Change this to actual range of motion and fitting WFE
         int yRot = UnityEngine.Random.Range(-45, 45);
@@ -500,17 +562,33 @@ public class HIL_Manager : MonoBehaviour
         return (shelf, ori, yRot);
     }
 
-    public void NewRandomTaskConf()
+    public void NewRandomInteractTaskConf()
     {
-        (GameObject rdStartShelf, TaskConfig.TbOris rdTbOrisStart, float rdYRotStart) = CreateRandomConf();
-        (GameObject rdTargetShelf, TaskConfig.TbOris rdTbOrisTarget, float rdYRotTarget) = CreateRandomConf(excludedShelf: rdStartShelf);
+        (GameObject rdStartShelf, InteractTaskConfig.TbOris rdTbOrisStart, float rdYRotStart) = CreateRandomInteractConf();
+        (GameObject rdTargetShelf, InteractTaskConfig.TbOris rdTbOrisTarget, float rdYRotTarget) = CreateRandomInteractConf(excludedShelf: rdStartShelf);
 
         // create a new config
-        currentTaskConfig = new TaskConfig(rdStartShelf, rdTbOrisStart, rdYRotStart, rdTargetShelf, rdTbOrisTarget, rdYRotTarget);
-        Debug.Log(JsonUtility.ToJson(currentTaskConfig));
+        currentInteractTaskConfig = new InteractTaskConfig(rdStartShelf, rdTbOrisStart, rdYRotStart, rdTargetShelf, rdTbOrisTarget, rdYRotTarget);
+        Debug.Log(JsonUtility.ToJson(currentInteractTaskConfig));
 
         StartCoroutine(TransformGhostHdToTarget());
         StartCoroutine(TransformTbToStart());
+    }
+
+    public void NewRandomTacTaskConf()
+    {
+        // create a new task conf for the correct DOAs
+        foreach (var doa in GhstHandController.DOA_mujoco)
+        {
+            // check if this doa should be changed continue OR set to zero
+            if(!currentStats.activeDiffDOAs.Keys.Contains(doa.General.doa)) continue;
+
+            // new random value in the doa range
+            float value = UnityEngine.Random.Range(-1, 1.0f);
+            GhstHandController.RemapDOA(value, doa.General);
+
+            GhstHandController.OverwriteCurrVal(doa.General.doa, value, true);
+        }
     }
 
     public void BtnSetGhostToTB()
