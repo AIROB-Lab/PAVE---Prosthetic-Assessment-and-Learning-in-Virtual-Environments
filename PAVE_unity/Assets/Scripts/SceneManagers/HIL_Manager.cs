@@ -177,9 +177,13 @@ public class HIL_Manager : MonoBehaviour
 
     private void Awake()
     {
+        Application.targetFrameRate = 90;
+
+
         // create stats obj
         currentStats = new Stats(new DOA[] { DOA.HOC, DOA.WFE, DOA.WPS });
         currentStats.RemapToIncomingRange = RemapStatsToIncomingRange;
+
     }
     void Start()
     {
@@ -249,7 +253,6 @@ public class HIL_Manager : MonoBehaviour
                 currentPhase = HIL_phases.Reach;
 
                 // add other things that need to be set up for Reach...
-
 
                 break;
 
@@ -577,18 +580,51 @@ public class HIL_Manager : MonoBehaviour
 
     public void NewRandomTacTaskConf()
     {
+        // choose 1,2 or 3 from this:
+        int countDoas = UnityEngine.Random.Range(1, GhstHandController.DOA_mujoco.Length + 1);
+
+        List<DOA_mj> rdDoas = SelectRandomItems(new List<DOA_mj>(GhstHandController.DOA_mujoco), countDoas);
+
         // create a new task conf for the correct DOAs
-        foreach (var doa in GhstHandController.DOA_mujoco)
+        foreach (var doa in rdDoas)
         {
             // check if this doa should be changed continue OR set to zero
             if(!currentStats.activeDiffDOAs.Keys.Contains(doa.General.doa)) continue;
 
             // new random value in the doa range
-            float value = UnityEngine.Random.Range(-1, 1.0f);
-            GhstHandController.RemapDOA(value, doa.General);
+            float value = UnityEngine.Random.Range(-1f, 1f);
+            value = GhstHandController.RemapDOA(value, doa.General);
 
             GhstHandController.OverwriteCurrVal(doa.General.doa, value, true);
         }
+    }
+
+    public List<T> SelectRandomItems<T>(List<T> sourceList, int count)
+    {
+        // Create a temporary list to avoid modifying the original source list
+        List<T> tempPool = new List<T>(sourceList);
+        List<T> result = new List<T>();
+
+        // Ensure we don't try to select more items than available in the list
+        if (count > tempPool.Count)
+        {
+            Debug.LogWarning("Attempted to select more items than available in the list. Selecting all available items.");
+            count = tempPool.Count;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            // Generate a random index within the current bounds of the temporary list
+            int randomIndex = UnityEngine.Random.Range(0, tempPool.Count);
+
+            // Add the item at the random index to the result list
+            result.Add(tempPool[randomIndex]);
+
+            // Remove the selected item from the temporary list to prevent duplicates
+            tempPool.RemoveAt(randomIndex);
+        }
+
+        return result;
     }
 
     public void BtnSetGhostToTB()
