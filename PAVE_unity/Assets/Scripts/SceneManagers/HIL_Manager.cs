@@ -155,15 +155,18 @@ public class HIL_Manager : MonoBehaviour
     //[SerializeField]
     private GameObject[] cupboards;
     [SerializeField]
+    private GameObject GhstHandWTb;
+    [SerializeField]
     private GameObject GhstHand;
     private HandController GhstHandController;
+    private GameObject GhstHandForearmMocap;
     [SerializeField]
     private GameObject PrsthHand;
     private HandController PrsthHandController;
+    private GameObject palm;
+    private GameObject palmGhst;
     [SerializeField]
     private GameObject TB;
-    [SerializeField]
-    private GameObject palmGeom;
     [SerializeField]
     private float GRASP_DISTANCE;
     [SerializeField]
@@ -179,7 +182,6 @@ public class HIL_Manager : MonoBehaviour
     {
         Application.targetFrameRate = 90;
 
-
         // create stats obj
         currentStats = new Stats(new DOA[] { DOA.HOC, DOA.WFE, DOA.WPS });
         currentStats.RemapToIncomingRange = RemapStatsToIncomingRange;
@@ -187,13 +189,30 @@ public class HIL_Manager : MonoBehaviour
     }
     void Start()
     {
-        // get the first enabled handcontrollers
+
+        // get the correct Ghost Hand
+        if (currentEnv == HIL_env.Interact)
+        {
+            GhstHand = GhstHandWTb;
+        }
         GhstHandController = GhstHand.GetComponentsInChildren<HandController>(includeInactive: false)
             .Where(c => c.enabled)
             .ToArray()[0];
+        // get the Prsth hand
         PrsthHandController = PrsthHand.GetComponentsInChildren<HandController>(includeInactive: false)
             .Where(c => c.enabled)
             .ToArray()[0];
+
+        if (currentEnv == HIL_env.LimbPos)
+        {
+            GhstHandForearmMocap = Utils.RecursiveFindChild(GhstHand, "MocapTracker");
+        }
+
+        // get palm of Prsth
+        palm = Utils.RecursiveFindChild(PrsthHand, "palm");
+
+        // get palm of GhstHand
+        palmGhst = Utils.RecursiveFindChild(GhstHand, "palm");
 
 
         if (currentEnv == HIL_env.Interact || currentEnv == HIL_env.LimbPos)
@@ -216,7 +235,7 @@ public class HIL_Manager : MonoBehaviour
             UpdateStats();
 
             // send out pseudo labels based on stats and activated phase config
-            SendPseudoLabelToLibEMG();
+            CheckSendPseudoLabelToLibEMG();
         }
 
         switch (currentEnv)
@@ -342,7 +361,39 @@ public class HIL_Manager : MonoBehaviour
 
     private void PerformLimbPosLoop()
     {
-        throw new NotImplementedException();
+        switch (currentPhase)
+        {
+            case HIL_phases.None:
+
+                // Start new random task config
+                this.NewRandomLimbPosTask(2);
+
+                // move to next phase
+                currentPhase = HIL_phases.Reach;
+
+                break;
+
+            case HIL_phases.Reach:
+
+                // check if distance to start is smaller then threshold
+                if (currentStats.hdToStart.magnitude <= GRASP_DISTANCE)
+                {
+                    currentPhase = HIL_phases.Grasp;
+                    timoutStart = StreamlinedInputManager.Now;
+
+                }
+                break;
+
+            case HIL_phases.Grasp:
+                // if timout or target reach generate new one => just timout for now
+                if (StreamlinedInputManager.Now - timoutStart > timoutTime)
+                {
+                    currentPhase = HIL_phases.None;
+                }
+
+                break;
+
+        }
     }
     public double timoutTime;
     double timoutStart;
@@ -354,7 +405,7 @@ public class HIL_Manager : MonoBehaviour
             case HIL_phases.None:
 
                 // Start new random task config
-                this.NewRandomTacTaskConf();
+                this.NewRandomTacTask(2);
 
                 // move to next phase
                 currentPhase = HIL_phases.Reach;
@@ -384,8 +435,17 @@ public class HIL_Manager : MonoBehaviour
         if ((currentEnv == HIL_env.Interact) || (currentEnv == HIL_env.LimbPos))
         {
             // update stats
-            currentStats.hdToStart = currentInteractTaskConfig.startShelf.transform.position - palmGeom.transform.position;
-            currentStats.hdToTarget = currentInteractTaskConfig.targetShelf.transform.position - palmGeom.transform.position;
+            if (currentEnv == HIL_env.Interact)
+            {
+                // the interact task has a separat config to keep track of the more complex structure, use start and target shelfs
+                currentStats.hdToStart = currentInteractTaskConfig.startShelf.transform.position - palm.transform.position;
+                currentStats.hdToTarget = currentInteractTaskConfig.targetShelf.transform.position - palm.transform.position;
+            }
+            if (currentEnv == HIL_env.LimbPos)
+            {
+                // only have "start" target to switch to "Grasp" phase for sending feedback
+                currentStats.hdToStart = palm.transform.position - palmGhst.transform.position;
+            }
         }
 
         var keys = currentStats.activeDiffDOAs.Keys.ToArray();
@@ -403,7 +463,7 @@ public class HIL_Manager : MonoBehaviour
         }
     }
 
-    private void SendPseudoLabelToLibEMG()
+    private void CheckSendPseudoLabelToLibEMG()
     {
         // find current phase and send out feedback
         foreach (var phaseConfig in this.pseudoFeedbackConfig)
@@ -539,7 +599,31 @@ public class HIL_Manager : MonoBehaviour
         yield return null;
     }
 
+    private IEnumerator TransformGhstHandWForarmWeld(Vector3 pos, Quaternion ori)
+    {
+
+        GhstHandForearmMocap.transform.position = pos + new Vector3(0, 0.15f, 0) - ori * new Vector3(0,0,0.25f);
+        GhstHandForearmMocap.transform.rotation = ori * Quaternion.Euler(90, 0, 0) * Quaternion.Euler(0, -90, 0);
+
+        yield return null;
+    }
+
     public (GameObject, InteractTaskConfig.TbOris, float) CreateRandomInteractConf(GameObject excludedShelf = null)
+    {
+        // get random shelf
+        GameObject shelf = GetRandomShelf(excludedShelf);
+
+        // create random pose and z rotation fitted to interact task
+        int orisLen = Enum.GetValues(typeof(InteractTaskConfig.TbOris)).Length;
+        InteractTaskConfig.TbOris ori = (InteractTaskConfig.TbOris)UnityEngine.Random.Range(0, orisLen);
+
+        // ToDo: Change this to actual range of motion and fitting WFE
+        int yRot = UnityEngine.Random.Range(-45, 45);
+
+        return (shelf, ori, yRot);
+    }
+
+    private GameObject GetRandomShelf(GameObject excludedShelf = null)
     {
         // get cupboard
         GameObject cupboard = cupboards[UnityEngine.Random.Range(0, cupboards.Length)];
@@ -554,15 +638,7 @@ public class HIL_Manager : MonoBehaviour
         }
         while (GameObject.ReferenceEquals(shelf, excludedShelf));
 
-
-        // create random pose and z rotation
-        int orisLen = Enum.GetValues(typeof(InteractTaskConfig.TbOris)).Length;
-        InteractTaskConfig.TbOris ori = (InteractTaskConfig.TbOris)UnityEngine.Random.Range(0, orisLen);
-
-        // ToDo: Change this to actual range of motion and fitting WFE
-        int yRot = UnityEngine.Random.Range(-45, 45);
-
-        return (shelf, ori, yRot);
+        return shelf;
     }
 
     public void NewRandomInteractTaskConf()
@@ -578,10 +654,10 @@ public class HIL_Manager : MonoBehaviour
         StartCoroutine(TransformTbToStart());
     }
 
-    public void NewRandomTacTaskConf()
+    public void NewRandomTacTask(int numNew = 3)
     {
         // choose 1,2 or 3 from this:
-        int countDoas = UnityEngine.Random.Range(1, GhstHandController.DOA_mujoco.Length + 1);
+        int countDoas = UnityEngine.Random.Range(1, numNew+1);
 
         List<DOA_mj> rdDoas = SelectRandomItems(new List<DOA_mj>(GhstHandController.DOA_mujoco), countDoas);
 
@@ -597,6 +673,19 @@ public class HIL_Manager : MonoBehaviour
 
             GhstHandController.OverwriteCurrVal(doa.General.doa, value, true);
         }
+    }
+
+    public void NewRandomLimbPosTask(int numNew = 3)
+    {
+        // get a random shelf
+        GameObject rdShelf = GetRandomShelf();
+
+        // create and apply random TAC config
+        NewRandomTacTask(numNew);
+
+        // teleport ghost hand to target
+        StartCoroutine(TransformGhstHandWForarmWeld(rdShelf.transform.position, rdShelf.transform.rotation));
+
     }
 
     public List<T> SelectRandomItems<T>(List<T> sourceList, int count)
@@ -625,6 +714,24 @@ public class HIL_Manager : MonoBehaviour
         }
 
         return result;
+    }
+
+    public void BtnNewConfig()
+    {
+        if (currentEnv == HIL_env.TAC)
+        {
+            NewRandomTacTask();
+        }
+
+        else if (currentEnv == HIL_env.LimbPos)
+        {
+            NewRandomLimbPosTask();
+        }
+
+        else if (currentEnv == HIL_env.Interact)
+        {
+            NewRandomInteractTaskConf();
+        }
     }
 
     public void BtnSetGhostToTB()

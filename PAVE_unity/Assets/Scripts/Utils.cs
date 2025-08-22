@@ -30,4 +30,24 @@ public class Utils
 
         return null;
     }
+
+    public static GameObject RecursiveFindChild(GameObject parent, string childName)
+    {
+        foreach (Transform child in parent.transform)
+        {
+            if (child.name == childName)
+            {
+                return child.gameObject;
+            }
+            else
+            {
+                GameObject found = RecursiveFindChild(child.gameObject, childName);
+                if (found != null)
+                {
+                    return found.gameObject;
+                }
+            }
+        }
+        return null;
+    }
 }
