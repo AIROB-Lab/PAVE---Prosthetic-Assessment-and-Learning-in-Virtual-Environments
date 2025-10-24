@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "com.github.mj-unity-extensions": {
-      "version": "file:C:/Users/g8nub/Development/modular-agents/mj-unity-extensions",
+      "version": "file:C:/Users/ho41rybo/Development/GIT/modular-agents/mj-unity-extensions",
       "depth": 0,
       "source": "local",
       "dependencies": {
@@ -9,7 +9,7 @@
       }
     },
     "com.unity.burst": {
-      "version": "1.8.21",
+      "version": "1.8.17",
       "depth": 1,
       "source": "registry",
       "dependencies": {
@@ -65,7 +65,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.inputsystem": {
-      "version": "1.14.0",
+      "version": "1.8.1",
       "depth": 1,
       "source": "registry",
       "dependencies": {
@@ -81,7 +81,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.render-pipelines.core": {
-      "version": "14.0.12",
+      "version": "14.0.11",
       "depth": 1,
       "source": "builtin",
       "dependencies": {
@@ -98,8 +98,8 @@
       "dependencies": {
         "com.unity.mathematics": "1.2.1",
         "com.unity.burst": "1.8.9",
-        "com.unity.render-pipelines.core": "14.0.12",
-        "com.unity.shadergraph": "14.0.12",
+        "com.unity.render-pipelines.core": "14.0.11",
+        "com.unity.shadergraph": "14.0.11",
         "com.unity.render-pipelines.universal-config": "14.0.9"
       }
     },
@@ -119,11 +119,11 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.shadergraph": {
-      "version": "14.0.12",
+      "version": "14.0.11",
       "depth": 1,
       "source": "builtin",
       "dependencies": {
-        "com.unity.render-pipelines.core": "14.0.12",
+        "com.unity.render-pipelines.core": "14.0.11",
         "com.unity.searcher": "4.9.2"
       }
     },
@@ -179,7 +179,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.xr.arfoundation": {
-      "version": "5.2.0",
+      "version": "5.1.5",
       "depth": 1,
       "source": "registry",
       "dependencies": {
@@ -276,7 +276,7 @@
       "url": "https://packages.unity.com"
     },
     "org.mujoco": {
-      "version": "file:C:/Users/g8nub/Development/mujoco-3.3.3/mujoco-3.3.3/unity",
+      "version": "file:C:/Users/ho41rybo/Development/mujoco-3.3.3/mujoco-3.3.3/unity",
       "depth": 0,
       "source": "local",
       "dependencies": {}
