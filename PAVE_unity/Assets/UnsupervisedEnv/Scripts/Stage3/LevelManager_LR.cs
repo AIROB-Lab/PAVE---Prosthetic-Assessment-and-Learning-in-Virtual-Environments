@@ -8,57 +8,6 @@ using UnityEngine.UI;
 using System;
 using System.Linq;
 
-public enum Levels
-{
-    None, // #0 not running
-    CollectIngredients, // #1
-    PourIngredients, // #2
-    HeatUpStove, // #3
-    FlipPancake1, // #4a
-    PlacePancake1, // #5a
-    FlipPancake2, // #4b
-    PlacePancake2, // #5b
-    SqueezeSyrup, // #6
-    Final // End of kitchen tasks
-}
-
-public enum IngredientNames
-{
-    milk,
-    sugar,
-    flour,
-    egg1, 
-    egg2
-}
-
-public enum LevelNames
-{
-    CollectIngredients,
-    PourIngredients,
-    HeatUpStove,
-    FlipPancake,
-    PlacePancake,
-    SqueezeSyrup
-}
-
-[System.Serializable]
-public class LevelTime // add individual time for each level in the inspector
-{
-    public LevelNames levelName;
-    public float levelDuration;
-}
-
-[System.Serializable]
-public class Ingredient
-{
-    public IngredientNames name;
-    public GameObject gameObj;
-    public GameObject startPosition;
-    public GameObject targetPosition;
-    public GameObject outsidePosition;
-    public GameObject colliderGO;
-    public MjFreeJoint freeJoint;
-}
 
 
 public class LevelManager : MonoBehaviour
@@ -91,7 +40,7 @@ public class LevelManager : MonoBehaviour
     //public float timeOver = 180f; // seconds to perform a level
     private bool timeLimit = true; // boolean to enable level time limit
     public List<LevelTime> levelTime = new List<LevelTime>(); // List of each level with its individual time over time [in seconds]
-    
+
 
 
     [HideInInspector] public GameObject bowl;
@@ -122,14 +71,14 @@ public class LevelManager : MonoBehaviour
     // level 1 (COLLECT)
     public static List<GameObject> collectedObjects = new List<GameObject>(); // List for collected ingredients
     public static List<String> fallenObjects = new List<String>(); // List of objects fallen on the floor
-    [Header("Level 1")] 
+    [Header("Level 1")]
     public GameObject collectionArea;
     public int numberToCollect = 5; // # ingredients to collect (milk, sugar, flour, 2 eggs)
     private bool placedStart = false;
 
     // level 2 (POUR)
     [Header("Level 2")]
-    public FillingBar fillingBar;
+    public FillingBar_LR fillingBar;
     public GameObject fillingObject;
     public float fillingTime = 3f; // time to hold in position adjusts the maxValue of the filling scale
     private float timeToFill1 = 0f;
@@ -186,8 +135,8 @@ public class LevelManager : MonoBehaviour
     public GameObject posPancakePlate;
 
     //level 10
-    [Header("Level 10")] 
-    public FillingBar fillingBarSyrup;
+    [Header("Level 10")]
+    public FillingBar_LR fillingBarSyrup;
     public GameObject fillingObjectSyrup;
     public GameObject posSyrup;
     private float timeToSqueeze = 0f;
@@ -225,7 +174,7 @@ public class LevelManager : MonoBehaviour
         dough3 = bowl.transform.Find("Dough3").gameObject;
         dough4 = bowl.transform.Find("Dough4").gameObject;
         dough5 = bowl.transform.Find("Dough5").gameObject;
-        
+
         dough1?.SetActive(false);
         dough2?.SetActive(false);
         dough3?.SetActive(false);
@@ -254,7 +203,7 @@ public class LevelManager : MonoBehaviour
         syrup = GameObject.Find("syrup");
         if (syrup != null)
         {
-           foreach (Renderer i in syrup.GetComponentsInChildren<Renderer>())
+            foreach (Renderer i in syrup.GetComponentsInChildren<Renderer>())
             { i.enabled = false; }
 
         }
@@ -268,8 +217,8 @@ public class LevelManager : MonoBehaviour
 
         // get plate
         plate = GameObject.Find("plate");
-        if(plate!=null)
-            plate.GetComponent<Renderer>().enabled=false;
+        if (plate != null)
+            plate.GetComponent<Renderer>().enabled = false;
 
         // disable pancake renderer
         if (pancakeRaw != null)
@@ -282,9 +231,9 @@ public class LevelManager : MonoBehaviour
         }
         if (pancakeCooked2 != null)
         {
-            pancakeCooked2.GetComponentInChildren<Renderer>().enabled = false;  
+            pancakeCooked2.GetComponentInChildren<Renderer>().enabled = false;
         }
-       
+
 
         // get pan
         pan = GameObject.Find("pan2");
@@ -319,16 +268,16 @@ public class LevelManager : MonoBehaviour
     {
         // get the current grabbed Object for level2 & 6 by delegate in CollisionObject.cs
         grabbedObject = grabbedObj;
-              
+
     }
 
 
-    
+
 
 
     private void FixedUpdate()
     {
-       
+
         //level = currentLevel;
 
         if (level != Levels.None)
@@ -337,17 +286,17 @@ public class LevelManager : MonoBehaviour
             elapsedTime += Time.deltaTime;
             totalElapsedTime += Time.deltaTime;
         }
-        
+
 
         if (elapsedTimeText != null)
         {
             // Show time in UI
-            elapsedTimeText.text = $"Elapsed Time: {elapsedTime:F2}"; 
+            elapsedTimeText.text = $"Elapsed Time: {elapsedTime:F2}";
         }
         if (totalElapsedTimeText != null)
         {
             // Show time in UI
-            totalElapsedTimeText.text = $"Total Elapsed Time: {totalElapsedTime:F2}"; 
+            totalElapsedTimeText.text = $"Total Elapsed Time: {totalElapsedTime:F2}";
         }
 
         switch (level)
@@ -356,9 +305,9 @@ public class LevelManager : MonoBehaviour
             /// level stat before starting and during pause
             /// </summary>
             case Levels.None: // #0
-                // do nothing in here
-                //Debug.Log("Wait for start");
-                
+                              // do nothing in here
+                              //Debug.Log("Wait for start");
+
                 break;
 
             /// <summary>
@@ -366,7 +315,7 @@ public class LevelManager : MonoBehaviour
             /// continue with next level if everything is collected or time over 
             /// </summary>
             case Levels.CollectIngredients: // #1
-               
+
                 // show instruction text
                 DisableText(instructionText);
                 instructionText[0].gameObject.SetActive(true);
@@ -377,7 +326,7 @@ public class LevelManager : MonoBehaviour
                 //place ingredients to starting position
                 if (!placedStart)
                 {
-                    StartCoroutine(TeleportIngrToCorrectPosition(milkBottle,milkBottle.startPosition));
+                    StartCoroutine(TeleportIngrToCorrectPosition(milkBottle, milkBottle.startPosition));
                     StartCoroutine(TeleportIngrToCorrectPosition(sugarBox, sugarBox.startPosition));
                     StartCoroutine(TeleportIngrToCorrectPosition(flourBox, flourBox.startPosition));
                     StartCoroutine(TeleportIngrToCorrectPosition(egg1, egg1.startPosition));
@@ -477,7 +426,7 @@ public class LevelManager : MonoBehaviour
                             break;
                     }
                 }
-         
+
                 // End of level
                 // TIME OVER
                 if (timeLimit && elapsedTime >= levelTime[0].levelDuration)
@@ -533,7 +482,7 @@ public class LevelManager : MonoBehaviour
                     AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
-              
+
 
                 break;
 
@@ -578,7 +527,7 @@ public class LevelManager : MonoBehaviour
 
                 if (grabbedObject != null && pouredObjects.Count != numberToCollect)
                 {
-                    
+
                     switch (grabbedObject.name)
                     {
 
@@ -604,38 +553,38 @@ public class LevelManager : MonoBehaviour
 
                                 if (hitName1 != null && (hitName1 == "bowl_collider" || hitName1 == "Dough1" || hitName1 == "Dough2" || hitName1 == "Dough3" || hitName1 == "Dough4" || hitName1 == "Dough5"))
                                 {
-                                        //increase time during filling position
-                                        timeToFill3 += Time.deltaTime;
+                                    //increase time during filling position
+                                    timeToFill3 += Time.deltaTime;
 
-                                        // adjust filling scale
-                                        fillingBar.SetFilling(timeToFill3);
+                                    // adjust filling scale
+                                    fillingBar.SetFilling(timeToFill3);
 
-                                        if (timeToFill3 >= fillingTime) // filling completed
-                                        {
-                                            //log poured object
-                                            AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                    if (timeToFill3 >= fillingTime) // filling completed
+                                    {
+                                        //log poured object
+                                        AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
-                                            PlaySound(successSound);
-                                            timeToFill3 = 0;
-                                            // Add object to list
-                                            pouredObjects.Add(grabbedObject);
+                                        PlaySound(successSound);
+                                        timeToFill3 = 0;
+                                        // Add object to list
+                                        pouredObjects.Add(grabbedObject);
 
 
-                                            // disable filling bar
-                                            fillingObject?.SetActive(false);
+                                        // disable filling bar
+                                        fillingObject?.SetActive(false);
 
-                                            // teleportate outside kitchen
-                                            StartCoroutine(TeleportIngrToCorrectPosition(milkBottle, milkBottle.outsidePosition));
-                                        }
+                                        // teleportate outside kitchen
+                                        StartCoroutine(TeleportIngrToCorrectPosition(milkBottle, milkBottle.outsidePosition));
+                                    }
                                 }
-                                
+
 
                             }
 
-                        break;
+                            break;
 
 
-                            
+
                         case "sugar_collider":
                             if (!pouredObjects.Contains(grabbedObject)) // not poured so far
                             {
@@ -658,37 +607,37 @@ public class LevelManager : MonoBehaviour
 
                                 if (hitName2 != null && (hitName2 == "bowl_collider" || hitName2 == "Dough1" || hitName2 == "Dough2" || hitName2 == "Dough3" || hitName2 == "Dough4" || hitName2 == "Dough5"))
                                 {
-                                        //increase time during filling position
-                                        timeToFill2 += Time.deltaTime;
+                                    //increase time during filling position
+                                    timeToFill2 += Time.deltaTime;
 
-                                        // adjust filling scale
-                                        fillingBar.SetFilling(timeToFill2);
+                                    // adjust filling scale
+                                    fillingBar.SetFilling(timeToFill2);
 
-                                        if (timeToFill2 >= fillingTime) // filling completed
-                                        {
-                                            //log poured object
-                                            AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                    if (timeToFill2 >= fillingTime) // filling completed
+                                    {
+                                        //log poured object
+                                        AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
-                                            PlaySound(successSound);
-                                            timeToFill2 = 0;
-                                            // Add object to list
-                                            pouredObjects.Add(grabbedObject);
+                                        PlaySound(successSound);
+                                        timeToFill2 = 0;
+                                        // Add object to list
+                                        pouredObjects.Add(grabbedObject);
 
-                                            // disable filling bar
-                                            fillingObject?.SetActive(false);
+                                        // disable filling bar
+                                        fillingObject?.SetActive(false);
 
-                                            // teleportate outside kitchen
-                                            StartCoroutine(TeleportIngrToCorrectPosition(sugarBox, sugarBox.outsidePosition));
-                                            
+                                        // teleportate outside kitchen
+                                        StartCoroutine(TeleportIngrToCorrectPosition(sugarBox, sugarBox.outsidePosition));
 
-                                        }
-                            
+
+                                    }
+
                                 }
-                                
+
 
                             }
 
-                        break;
+                            break;
 
                         case "flour_collider":
                             if (!pouredObjects.Contains(grabbedObject)) // not poured so far
@@ -702,45 +651,45 @@ public class LevelManager : MonoBehaviour
 
                                 // enable pouring script
                                 grabbedObject.GetComponent<PourDetector2>().enabled = true;
-                                
+
                                 string hitName3 = null;
-                                if(Stream2.hit.collider != null)
+                                if (Stream2.hit.collider != null)
                                 {
                                     hitName3 = Stream2.hit.collider.gameObject.name;
                                 }
 
                                 if (hitName3 != null && (hitName3 == "bowl_collider" || hitName3 == "Dough1" || hitName3 == "Dough2" || hitName3 == "Dough3" || hitName3 == "Dough4" || hitName3 == "Dough5"))
                                 {
-                                        //increase time during filling position
-                                        timeToFill1 += Time.deltaTime;
+                                    //increase time during filling position
+                                    timeToFill1 += Time.deltaTime;
 
-                                        // adjust filling scale
-                                        fillingBar.SetFilling(timeToFill1);
+                                    // adjust filling scale
+                                    fillingBar.SetFilling(timeToFill1);
 
-                                        if (timeToFill1 >= fillingTime) // filling completed
-                                        {
-                                            //log poured object
-                                            AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                    if (timeToFill1 >= fillingTime) // filling completed
+                                    {
+                                        //log poured object
+                                        AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
-                                            PlaySound(successSound);
-                                            timeToFill1 = 0;
+                                        PlaySound(successSound);
+                                        timeToFill1 = 0;
 
-                                            // Add object to list
-                                            pouredObjects.Add(grabbedObject);
+                                        // Add object to list
+                                        pouredObjects.Add(grabbedObject);
 
-                                            // disable filling bar
-                                            fillingObject?.SetActive(false);
+                                        // disable filling bar
+                                        fillingObject?.SetActive(false);
 
-                                            // teleportate outside kitchen
-                                            StartCoroutine(TeleportIngrToCorrectPosition(flourBox, flourBox.outsidePosition));
-                                        
-                                        }
+                                        // teleportate outside kitchen
+                                        StartCoroutine(TeleportIngrToCorrectPosition(flourBox, flourBox.outsidePosition));
+
+                                    }
 
                                 }
- 
+
                             }
 
-                        break;
+                            break;
 
                         case "egg1_collider":
                             //log grabbed object
@@ -841,10 +790,10 @@ public class LevelManager : MonoBehaviour
                             else if (currentTotalForce < maxBreakingForce && !(pouredObjects.Contains(grabbedObject) || fallenObjects.Contains(grabbedObject.name))) // cracking effect
                             {
                                 BreakingEggEffect(rendererGOEgg2, currentTotalForce, ref hasPlayedCrackSound2);
-   
+
                             }
 
-                            break ;
+                            break;
                     }
 
 
@@ -863,7 +812,7 @@ public class LevelManager : MonoBehaviour
                     case 3:
                         dough3?.SetActive(true);
                         break;
-                    case 4: 
+                    case 4:
                         dough4?.SetActive(true);
                         break;
                     case 5:
@@ -911,7 +860,7 @@ public class LevelManager : MonoBehaviour
                     break;
                 }
                 // FAIL
-                else if((fallenObjects.Count >= numberToCollect - pouredObjects.Count)) // fail if too much objects fallen or broken
+                else if ((fallenObjects.Count >= numberToCollect - pouredObjects.Count)) // fail if too much objects fallen or broken
                 {
                     //log fail
                     AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:fallenObjects={fallenObjects.Count}", $"{(int)level}", $"{level}");
@@ -929,7 +878,7 @@ public class LevelManager : MonoBehaviour
                     AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
-               
+
                 break;
 
             /// <summary>
@@ -948,11 +897,11 @@ public class LevelManager : MonoBehaviour
                 // teleport the ingredients
                 if (!outsideArea)
                 {
-                    
+
                     StartCoroutine(TeleportIngrToCorrectPosition(flourBox, flourBox.outsidePosition));
                     StartCoroutine(TeleportIngrToCorrectPosition(sugarBox, sugarBox.outsidePosition));
                     StartCoroutine(TeleportIngrToCorrectPosition(milkBottle, milkBottle.outsidePosition));
-                    StartCoroutine (TeleportIngrToCorrectPosition(egg1, egg1.outsidePosition));
+                    StartCoroutine(TeleportIngrToCorrectPosition(egg1, egg1.outsidePosition));
                     StartCoroutine(TeleportIngrToCorrectPosition(egg2, egg2.outsidePosition));
 
                     outsideArea = true;
@@ -975,7 +924,7 @@ public class LevelManager : MonoBehaviour
                 }
 
                 // compare current joint angle in degree
-                if (knob != null && knob.GetComponent<MjHingeJoint>().Configuration <= requiredKnobAngle)  
+                if (knob != null && knob.GetComponent<MjHingeJoint>().Configuration <= requiredKnobAngle)
                 {
                     //SUCCESSFUL
                     //log success
@@ -1005,19 +954,19 @@ public class LevelManager : MonoBehaviour
                 // show pan with pancake and spatula (execute just once)
                 if (!placed)
                 {
-                    if(pan != null)
+                    if (pan != null)
                     {
                         foreach (Renderer i in pan.GetComponentsInChildren<Renderer>())
                         { i.enabled = true; }
                         StartCoroutine(TeleportGOToCorrectPosition(pan, posPan));
-                        
+
                     }
-                    
-                    if (pancakeRaw!=null && posPancakeInPan!=null)
+
+                    if (pancakeRaw != null && posPancakeInPan != null)
                     {
                         // teleport raw pancake into pan
-                        StartCoroutine(TeleportGOToCorrectPosition(pancakeRaw,posPancakeInPan));
-                        pancakeRaw.GetComponentInChildren<Renderer>().enabled = true;                        
+                        StartCoroutine(TeleportGOToCorrectPosition(pancakeRaw, posPancakeInPan));
+                        pancakeRaw.GetComponentInChildren<Renderer>().enabled = true;
                     }
                     if (spatula != null)
                     {
@@ -1064,7 +1013,7 @@ public class LevelManager : MonoBehaviour
                     AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                     break;
                 }
-                
+
                 if (fallenObjects.Contains("pancake_Raw_collider") || fallenObjects.Contains("spatula_collider"))
                 {
                     //log fail
@@ -1082,7 +1031,7 @@ public class LevelManager : MonoBehaviour
                     AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
                 }
 
-            
+
 
                 break;
 
@@ -1094,8 +1043,8 @@ public class LevelManager : MonoBehaviour
                 DisableText(instructionText);
                 instructionText[4].gameObject.SetActive(true); // enable the instruction text
 
-                if (plate!=null) 
-                    plate.GetComponent<Renderer>().enabled=true;
+                if (plate != null)
+                    plate.GetComponent<Renderer>().enabled = true;
 
                 if (!outsideArea)
                 {
@@ -1107,7 +1056,7 @@ public class LevelManager : MonoBehaviour
                     if (pancakeRaw != null && posPancakeOutside != null)
                     {
                         //teleport raw pancake outside
-                        StartCoroutine(TeleportGOToCorrectPosition(pancakeRaw,posPancakeOutside));
+                        StartCoroutine(TeleportGOToCorrectPosition(pancakeRaw, posPancakeOutside));
                         pancakeRaw.GetComponentInChildren<Renderer>().enabled = false;
                     }
                     if (pancakeCooked1 != null && posPancakeInPan != null)
@@ -1120,8 +1069,8 @@ public class LevelManager : MonoBehaviour
                     if (spatula != null)
                     {
                         // teleport spatula
-                        StartCoroutine(TeleportGOToCorrectPosition(spatula,posSpatula));
-                        
+                        StartCoroutine(TeleportGOToCorrectPosition(spatula, posSpatula));
+
                     }
 
                     outsideArea = true;
@@ -1161,7 +1110,7 @@ public class LevelManager : MonoBehaviour
                     AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
                     AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
-                
+
                 if (fallenObjects.Contains("pancake_Cooked1_collider") || fallenObjects.Contains("spatula_collider"))
                 {
                     //log fail
@@ -1197,7 +1146,7 @@ public class LevelManager : MonoBehaviour
                 {
                     if (pan != null)
                     {
-                        StartCoroutine(TeleportGOToCorrectPosition(pan, posPan)); 
+                        StartCoroutine(TeleportGOToCorrectPosition(pan, posPan));
                     }
                     if (pancakeRaw != null && posPancakeInPan != null)
                     {
@@ -1205,17 +1154,17 @@ public class LevelManager : MonoBehaviour
                         StartCoroutine(TeleportGOToCorrectPosition(pancakeRaw, posPancakeInPan));
                         pancakeRaw.GetComponentInChildren<Renderer>().enabled = true;
                     }
-                    if(pancakeCooked1!= null && posPancakePlate != null)
+                    if (pancakeCooked1 != null && posPancakePlate != null)
                     {
                         //teleport cooked pancake onto plate
-                        StartCoroutine(TeleportGOToCorrectPosition(pancakeCooked1,posPancakePlate));
+                        StartCoroutine(TeleportGOToCorrectPosition(pancakeCooked1, posPancakePlate));
                         pancakeCooked1.GetComponentInChildren<Renderer>().enabled = true;
                     }
                     if (spatula != null)
                     {
                         // teleport spatula to position
                         StartCoroutine(TeleportGOToCorrectPosition(spatula, posSpatula));
-                        
+
                     }
                     placed = true;
                 }
@@ -1259,7 +1208,7 @@ public class LevelManager : MonoBehaviour
                     AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                     break;
                 }
-                
+
                 if (fallenObjects.Contains("pancake_Raw_collider") || fallenObjects.Contains("spatula_collider"))
                 {
                     //log fail
@@ -1314,8 +1263,8 @@ public class LevelManager : MonoBehaviour
                     if (spatula != null)
                     {
                         // teleport spatula
-                        StartCoroutine(TeleportGOToCorrectPosition(spatula,posSpatula));
-                        
+                        StartCoroutine(TeleportGOToCorrectPosition(spatula, posSpatula));
+
                     }
 
                     outsideArea = true;
@@ -1374,13 +1323,13 @@ public class LevelManager : MonoBehaviour
                     AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
-                
+
 
 
                 break;
 
             case Levels.SqueezeSyrup: // #6
-                 // reset bool for outside area
+                                      // reset bool for outside area
                 outsideArea = false;
 
                 // instruction text
@@ -1396,10 +1345,10 @@ public class LevelManager : MonoBehaviour
                     if (pancakeCooked2 != null && posPancakePlate != null)
                     {
                         //teleport cooked pancake onto plate
-                        StartCoroutine(TeleportGOToCorrectPosition(pancakeCooked2,posPancakePlate));
+                        StartCoroutine(TeleportGOToCorrectPosition(pancakeCooked2, posPancakePlate));
                     }
 
-                    if(syrup != null)
+                    if (syrup != null)
                     {
                         StartCoroutine(TeleportGOToCorrectPosition(syrup, posSyrup));
                         foreach (Renderer i in syrup.GetComponentsInChildren<Renderer>())
@@ -1446,12 +1395,12 @@ public class LevelManager : MonoBehaviour
                     hitName4 = StreamSyrup.hit.collider.gameObject.name;
                 }
 
-                
+
                 if (hitName4 != null && (hitName4 == "plate" || hitName4 == "pancake_Cooked1_collider" || hitName4 == "pancake_Cooked2_collider"))
                 {
                     //increase time during filling position
                     timeToSqueeze += Time.deltaTime;
-                    
+
                     // adjust filling scale
                     fillingBarSyrup.SetFilling(timeToSqueeze);
                     if (timeToSqueeze >= fillingTime)
@@ -1478,7 +1427,7 @@ public class LevelManager : MonoBehaviour
                     }
 
                 }
-                    
+
 
 
                 if (fallenObjects.Contains("syrup_renderer"))
@@ -1529,9 +1478,9 @@ public class LevelManager : MonoBehaviour
 
     public void DisableText(GameObject[] text)
     {
-        for(int i = 0; i < text.Length; i++)
+        for (int i = 0; i < text.Length; i++)
         {
-           text[i]?.gameObject.SetActive(false);
+            text[i]?.gameObject.SetActive(false);
         }
     }
 
@@ -1543,17 +1492,17 @@ public class LevelManager : MonoBehaviour
         {
             MjState.TeleportMjRoot(ingr.freeJoint, pos.transform.position, pos.transform.rotation);
         }
-              
+
 
         yield return new WaitForSeconds(0.05f);
-            
+
         // check 
         bool positionCorrect = Vector3.Distance(ingr.gameObj.transform.position, pos.transform.position) < 0.05f;
         bool rotationCorrect = Quaternion.Angle(ingr.gameObj.transform.rotation, pos.transform.rotation) < 1f;
 
         if (!positionCorrect || !rotationCorrect)
         {
-           // teleport again
+            // teleport again
             MjState.TeleportMjRoot(ingr.freeJoint, pos.transform.position, pos.transform.rotation);
         }
         else
@@ -1570,7 +1519,7 @@ public class LevelManager : MonoBehaviour
         // teleport
         if (freeJoint != null)
         {
-            MjState.TeleportMjRoot(freeJoint, pos.transform.position, pos.transform.rotation); 
+            MjState.TeleportMjRoot(freeJoint, pos.transform.position, pos.transform.rotation);
         }
         else
         {
@@ -1599,15 +1548,15 @@ public class LevelManager : MonoBehaviour
     IEnumerator WaitAndTeleportateEgg(GameObject obj)
     {
         yield return new WaitForSeconds(3);
-        
+
         if (obj.name == "egg1")
         {
             StartCoroutine(TeleportIngrToCorrectPosition(egg1, egg1.outsidePosition));
-           
+
         }
         else if (obj.name == "egg2")
         {
-           StartCoroutine(TeleportIngrToCorrectPosition(egg2, egg2.outsidePosition));
+            StartCoroutine(TeleportIngrToCorrectPosition(egg2, egg2.outsidePosition));
 
         }
 
@@ -1661,7 +1610,7 @@ public class LevelManager : MonoBehaviour
     {
         // "time_stamp_s" + "," + "participant" + "," + "event" + "," + "name" + "," + "level_number" + "," + "level_name" + Environment.NewLine;
         string addBuffer = $"{now},{participantID},{ev.ToString()},{name},{number},{level},{Environment.NewLine}";
-        LoggingManager.AddToBuffer("Stage3StudyEvent" , addBuffer);
+        LoggingManager.AddToBuffer("Stage3StudyEvent", addBuffer);
     }
     public void AddToValueBuffer(string fileName, double now, string values, string number, string level)
     {
@@ -1691,7 +1640,7 @@ public class LevelManager : MonoBehaviour
             GameObject startBtn = GameObject.Find("StartButton");
             if (startBtn != null)
             {
-                startBtn.GetComponent<Image>().color = Color.red;  
+                startBtn.GetComponent<Image>().color = Color.red;
             }
 
             level = levelPause;
@@ -1699,7 +1648,7 @@ public class LevelManager : MonoBehaviour
             running = true;
 
             // log start
-            AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Start",$"{(int)level}", $"{level}");
+            AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Start", $"{(int)level}", $"{level}");
             AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Start", $"{(int)level}", $"{level}", $"{elapsedTime}");
         }
         else
@@ -1791,7 +1740,60 @@ public class LevelManager : MonoBehaviour
     {
         timeLimit = toggle; // pass UI interaction to boolean
     }
-    
-  
+
+
     #endregion
 }
+
+public enum Levels
+{
+    None, // #0 not running
+    CollectIngredients, // #1
+    PourIngredients, // #2
+    HeatUpStove, // #3
+    FlipPancake1, // #4a
+    PlacePancake1, // #5a
+    FlipPancake2, // #4b
+    PlacePancake2, // #5b
+    SqueezeSyrup, // #6
+    Final // End of kitchen tasks
+}
+
+public enum IngredientNames
+{
+    milk,
+    sugar,
+    flour,
+    egg1, 
+    egg2
+}
+
+public enum LevelNames
+{
+    CollectIngredients,
+    PourIngredients,
+    HeatUpStove,
+    FlipPancake,
+    PlacePancake,
+    SqueezeSyrup
+}
+
+[System.Serializable]
+public class LevelTime // add individual time for each level in the inspector
+{
+    public LevelNames levelName;
+    public float levelDuration;
+}
+
+[System.Serializable]
+public class Ingredient
+{
+    public IngredientNames name;
+    public GameObject gameObj;
+    public GameObject startPosition;
+    public GameObject targetPosition;
+    public GameObject outsidePosition;
+    public GameObject colliderGO;
+    public MjFreeJoint freeJoint;
+}
+
