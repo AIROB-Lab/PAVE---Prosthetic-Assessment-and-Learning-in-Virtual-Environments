@@ -275,7 +275,7 @@ public class LevelManager : MonoBehaviour
 
 
 
-    private void FixedUpdate()
+    private void Update()
     {
 
         //level = currentLevel;
@@ -350,7 +350,7 @@ public class LevelManager : MonoBehaviour
                             currentTotalForce /= forceSensors.Length; // calculate mean of force
 
                             //log total force
-                            AddToValueBuffer("Stage3TotalForce", StreamlinedInputManager.Now, $"{currentTotalForce}", $"{(int)level}", $"{level}");
+                            AddToValueBuffer("Stage3TotalForce", StreamlinedInputManager_LR.Now, $"{currentTotalForce}", $"{(int)level}", $"{level}");
 
                             if (currentTotalForce >= maxBreakingForce && !broke1) // egg broke
                             {
@@ -364,7 +364,7 @@ public class LevelManager : MonoBehaviour
                                     PlaySound(failureSound);
 
                                 //log broken egg
-                                AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"brokenEgg:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"brokenEgg:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
                                 //change material to transparent
                                 rendererGOEgg1.GetComponent<Renderer>().material = transparentMat;
@@ -393,7 +393,7 @@ public class LevelManager : MonoBehaviour
                             currentTotalForce /= forceSensors.Length; // calculate mean of force
 
                             //log total force
-                            AddToValueBuffer("Stage3TotalForce", StreamlinedInputManager.Now, $"{currentTotalForce}", $"{(int)level}", $"{level}");
+                            AddToValueBuffer("Stage3TotalForce", StreamlinedInputManager_LR.Now, $"{currentTotalForce}", $"{(int)level}", $"{level}");
 
                             if (currentTotalForce >= maxBreakingForce && !broke2) // egg broke
                             {
@@ -406,7 +406,7 @@ public class LevelManager : MonoBehaviour
                                     PlaySound(failureSound);
 
                                 //log broken egg
-                                AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"brokenEgg:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"brokenEgg:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
                                 //change material to transparent
                                 rendererGOEgg2.GetComponent<Renderer>().material = transparentMat;
@@ -432,8 +432,8 @@ public class LevelManager : MonoBehaviour
                 if (timeLimit && elapsedTime >= levelTime[0].levelDuration)
                 {
                     // log fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:TimeOver(collectedItems={collectedObjects.Count})", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:TimeOver(collectedItems={collectedObjects.Count})", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     level = Levels.PourIngredients;
                     Debug.Log("Level2");
@@ -442,15 +442,15 @@ public class LevelManager : MonoBehaviour
                     fallenObjects.Clear(); // clear the list for next level
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
                 // SUCCESS
                 else if (collectedObjects.Count >= numberToCollect) // count collected objects in CollisionObject.cs, switch to next level if all ingredients collected
                 {
                     // log success
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Success:collectedItems={collectedObjects.Count}", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Success:collectedItems={collectedObjects.Count}", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     level = Levels.PourIngredients;
                     Debug.Log("Level2");
@@ -459,8 +459,8 @@ public class LevelManager : MonoBehaviour
                     fallenObjects.Clear(); // clear the list for next level
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                     break;
 
                 }
@@ -468,8 +468,8 @@ public class LevelManager : MonoBehaviour
                 else if ((fallenObjects.Count + collectedObjects.Count) >= numberToCollect)
                 {
                     // log fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:fallenObjects={fallenObjects.Count}", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:fallenObjects", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:fallenObjects={fallenObjects.Count}", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:fallenObjects", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     level = Levels.PourIngredients;
                     Debug.Log("Level2");
@@ -478,8 +478,8 @@ public class LevelManager : MonoBehaviour
                     fallenObjects.Clear(); // clear the list for next level
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
 
@@ -536,7 +536,7 @@ public class LevelManager : MonoBehaviour
                             if (!pouredObjects.Contains(grabbedObject)) // not poured so far
                             {
                                 //log grabbed object
-                                AddToEventBuffer(StreamlinedInputManager.Now, Events.CollisionEvent, $"grabbedObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.CollisionEvent, $"grabbedObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
                                 // show filling bar
                                 fillingObject?.SetActive(true);
@@ -562,7 +562,7 @@ public class LevelManager : MonoBehaviour
                                     if (timeToFill3 >= fillingTime) // filling completed
                                     {
                                         //log poured object
-                                        AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                        AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
                                         PlaySound(successSound);
                                         timeToFill3 = 0;
@@ -589,7 +589,7 @@ public class LevelManager : MonoBehaviour
                             if (!pouredObjects.Contains(grabbedObject)) // not poured so far
                             {
                                 //log grabbed object
-                                AddToEventBuffer(StreamlinedInputManager.Now, Events.CollisionEvent, $"grabbedObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.CollisionEvent, $"grabbedObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
                                 // show filling bar
                                 fillingObject?.SetActive(true);
@@ -616,7 +616,7 @@ public class LevelManager : MonoBehaviour
                                     if (timeToFill2 >= fillingTime) // filling completed
                                     {
                                         //log poured object
-                                        AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                        AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
                                         PlaySound(successSound);
                                         timeToFill2 = 0;
@@ -643,7 +643,7 @@ public class LevelManager : MonoBehaviour
                             if (!pouredObjects.Contains(grabbedObject)) // not poured so far
                             {
                                 //log grabbed object
-                                AddToEventBuffer(StreamlinedInputManager.Now, Events.CollisionEvent, $"grabbedObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.CollisionEvent, $"grabbedObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
                                 // show filling bar
                                 fillingObject?.SetActive(true);
@@ -669,7 +669,7 @@ public class LevelManager : MonoBehaviour
                                     if (timeToFill1 >= fillingTime) // filling completed
                                     {
                                         //log poured object
-                                        AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                        AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
                                         PlaySound(successSound);
                                         timeToFill1 = 0;
@@ -693,7 +693,7 @@ public class LevelManager : MonoBehaviour
 
                         case "egg1_collider":
                             //log grabbed object
-                            AddToEventBuffer(StreamlinedInputManager.Now, Events.CollisionEvent, $"grabbedObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                            AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.CollisionEvent, $"grabbedObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
                             //get current sensor readings for total force
                             for (int i = 0; i < forceSensors.Length; i++)
@@ -703,7 +703,7 @@ public class LevelManager : MonoBehaviour
                             currentTotalForce /= forceSensors.Length; // calculate mean of force
 
                             //log total force
-                            AddToValueBuffer("Stage3TotalForce", StreamlinedInputManager.Now, $"{currentTotalForce}", $"{(int)level}", $"{level}");
+                            AddToValueBuffer("Stage3TotalForce", StreamlinedInputManager_LR.Now, $"{currentTotalForce}", $"{(int)level}", $"{level}");
 
                             if (currentTotalForce >= maxBreakingForce && !(pouredObjects.Contains(grabbedObject) || fallenObjects.Contains(grabbedObject.name))) // egg broke
                             {
@@ -711,7 +711,7 @@ public class LevelManager : MonoBehaviour
                                 currentTotalForce = 0;
 
                                 //log broken egg
-                                AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"brokenEgg:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"brokenEgg:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
                                 //change material to transparent
                                 rendererGOEgg1.GetComponent<Renderer>().material = transparentMat;
@@ -745,7 +745,7 @@ public class LevelManager : MonoBehaviour
 
                         case "egg2_collider":
                             //log grabbed object
-                            AddToEventBuffer(StreamlinedInputManager.Now, Events.CollisionEvent, $"grabbedObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                            AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.CollisionEvent, $"grabbedObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
                             //get current sensor readings for total force
                             for (int i = 0; i < forceSensors.Length; i++)
@@ -755,7 +755,7 @@ public class LevelManager : MonoBehaviour
                             currentTotalForce /= forceSensors.Length; // calculate mean of force
 
                             //log total force
-                            AddToValueBuffer("Stage3TotalForce", StreamlinedInputManager.Now, $"{currentTotalForce}", $"{(int)level}", $"{level}");
+                            AddToValueBuffer("Stage3TotalForce", StreamlinedInputManager_LR.Now, $"{currentTotalForce}", $"{(int)level}", $"{level}");
 
                             if (currentTotalForce >= maxBreakingForce && !(pouredObjects.Contains(grabbedObject) || fallenObjects.Contains(grabbedObject.name))) // egg broke
                             {
@@ -763,7 +763,7 @@ public class LevelManager : MonoBehaviour
                                 currentTotalForce = 0;
 
                                 //log broken egg
-                                AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"brokenEgg:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                                AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"brokenEgg:{grabbedObject.name}", $"{(int)level}", $"{level}");
 
                                 //change material to transparent
                                 rendererGOEgg2.GetComponent<Renderer>().material = transparentMat;
@@ -826,8 +826,8 @@ public class LevelManager : MonoBehaviour
                 if (timeLimit && elapsedTime >= levelTime[1].levelDuration)
                 {
                     // log fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:TimeOver(pouredObjects={pouredObjects.Count})", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Faile:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:TimeOver(pouredObjects={pouredObjects.Count})", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Faile:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     //bowl?.SetActive(false);
                     level = Levels.HeatUpStove;
@@ -836,16 +836,16 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
                 //SUCCESS
                 if (pouredObjects.Count >= numberToCollect) // success if 5 objects poured
                 {
                     //log success
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Success:pouredObjects={pouredObjects.Count}", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Success:pouredObjects={pouredObjects.Count}", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     //bowl?.SetActive(false);
 
@@ -855,16 +855,16 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                     break;
                 }
                 // FAIL
                 else if ((fallenObjects.Count >= numberToCollect - pouredObjects.Count)) // fail if too much objects fallen or broken
                 {
                     //log fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:fallenObjects={fallenObjects.Count}", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:fallenObjects", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:fallenObjects={fallenObjects.Count}", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:fallenObjects", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     //bowl?.SetActive(false);
 
@@ -874,8 +874,8 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
 
@@ -910,8 +910,8 @@ public class LevelManager : MonoBehaviour
                 if (timeLimit && elapsedTime >= levelTime[2].levelDuration)
                 {
                     //log fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:TimeOver(knobAngle={knob.GetComponent<MjHingeJoint>().Configuration})", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:TimeOver(knobAngle={knob.GetComponent<MjHingeJoint>().Configuration})", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     level = Levels.FlipPancake1;
                     Debug.Log("Level4");
@@ -919,8 +919,8 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
                 // compare current joint angle in degree
@@ -928,8 +928,8 @@ public class LevelManager : MonoBehaviour
                 {
                     //SUCCESSFUL
                     //log success
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Success:knobAngle={knob.GetComponent<MjHingeJoint>().Configuration}", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Success:knobAngle={knob.GetComponent<MjHingeJoint>().Configuration}", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     level = Levels.FlipPancake1;
                     Debug.Log("Level4");
@@ -937,8 +937,8 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
                 break;
@@ -979,8 +979,8 @@ public class LevelManager : MonoBehaviour
                 if (timeLimit && elapsedTime >= levelTime[3].levelDuration)
                 {
                     //log Fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:TimeOver", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:TimeOver", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     flipped = false;
                     level = Levels.PlacePancake1;
@@ -990,16 +990,16 @@ public class LevelManager : MonoBehaviour
                     fallenObjects.Clear();
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
                 // SUCCESS
                 if (flipped)
                 {
                     //log Success
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Success:flipped", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Success:flipped", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     flipped = false;
                     level = Levels.PlacePancake1;
@@ -1009,16 +1009,16 @@ public class LevelManager : MonoBehaviour
                     fallenObjects.Clear();
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                     break;
                 }
 
                 if (fallenObjects.Contains("pancake_Raw_collider") || fallenObjects.Contains("spatula_collider"))
                 {
                     //log fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:fallenObjects", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:fallenObjects", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:fallenObjects", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:fallenObjects", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     flipped = false;
                     level = Levels.PlacePancake1;
@@ -1028,7 +1028,7 @@ public class LevelManager : MonoBehaviour
                     fallenObjects.Clear();
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
                 }
 
 
@@ -1080,8 +1080,8 @@ public class LevelManager : MonoBehaviour
                 if (timeLimit && elapsedTime >= levelTime[4].levelDuration)
                 {
                     //log Fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:TimeOver", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:TimeOver", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     level = Levels.FlipPancake2;
                     Debug.Log("Level6");
@@ -1089,16 +1089,16 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
                 // SUCCESS
                 if (onPlate)
                 {
                     //log Success
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Success:onPlate", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Success:onPlate", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     onPlate = false;
                     level = Levels.FlipPancake2;
@@ -1107,15 +1107,15 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
                 if (fallenObjects.Contains("pancake_Cooked1_collider") || fallenObjects.Contains("spatula_collider"))
                 {
                     //log fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:fallenObjects", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:fallenObjects", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:fallenObjects", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:fallenObjects", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     onPlate = false;
                     level = Levels.FlipPancake2;
@@ -1124,8 +1124,8 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
 
@@ -1174,8 +1174,8 @@ public class LevelManager : MonoBehaviour
                 if (timeLimit && elapsedTime >= levelTime[3].levelDuration)
                 {
                     //log Fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:TimeOver", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:TimeOver", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     flipped = false;
                     level = Levels.PlacePancake2;
@@ -1185,16 +1185,16 @@ public class LevelManager : MonoBehaviour
                     fallenObjects.Clear();
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
                 // SUCCESS
                 if (flipped)
                 {
                     //log Success
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Success:flipped", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Success:flipped", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     flipped = false;
                     level = Levels.PlacePancake2;
@@ -1204,16 +1204,16 @@ public class LevelManager : MonoBehaviour
                     fallenObjects.Clear();
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                     break;
                 }
 
                 if (fallenObjects.Contains("pancake_Raw_collider") || fallenObjects.Contains("spatula_collider"))
                 {
                     //log fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:fallenObjects", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:fallenObjects", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:fallenObjects", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:fallenObjects", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     flipped = false;
                     level = Levels.PlacePancake2;
@@ -1223,8 +1223,8 @@ public class LevelManager : MonoBehaviour
                     fallenObjects.Clear();
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
 
@@ -1274,8 +1274,8 @@ public class LevelManager : MonoBehaviour
                 if (timeLimit && elapsedTime >= levelTime[4].levelDuration)
                 {
                     //log Fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:TimeOver", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:TimeOver", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     level = Levels.SqueezeSyrup;
                     Debug.Log("Level8");
@@ -1283,16 +1283,16 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
                 // SUCCESS
                 if (onPlate)
                 {
                     //log Success
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Success:onPlate", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Success:onPlate", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     onPlate = false;
                     level = Levels.SqueezeSyrup;
@@ -1301,16 +1301,16 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                     break;
                 }
 
                 if (fallenObjects.Contains("pancake_Cooked2_collider") || fallenObjects.Contains("spatula_collider"))
                 {
                     //log fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:fallenObjects", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:fallenObjects", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:fallenObjects", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:fallenObjects", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     onPlate = false;
                     level = Levels.SqueezeSyrup;
@@ -1319,8 +1319,8 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
 
@@ -1361,8 +1361,8 @@ public class LevelManager : MonoBehaviour
                 if (timeLimit && elapsedTime >= levelTime[5].levelDuration)
                 {
                     //log Fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:TimeOver", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:TimeOver", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:TimeOver", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     level = Levels.Final;
                     Debug.Log("Done");
@@ -1370,8 +1370,8 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
 
@@ -1385,7 +1385,7 @@ public class LevelManager : MonoBehaviour
                 currentTotalForceSyrup /= forceSensors.Length; // calculate mean of force
 
                 //log total force
-                AddToValueBuffer("Stage3TotalForce", StreamlinedInputManager.Now, $"{currentTotalForceSyrup}", $"{(int)level}", $"{level}");
+                AddToValueBuffer("Stage3TotalForce", StreamlinedInputManager_LR.Now, $"{currentTotalForceSyrup}", $"{(int)level}", $"{level}");
 
 
                 // check hitted objects
@@ -1407,8 +1407,8 @@ public class LevelManager : MonoBehaviour
                     {
                         // SUCCESS
                         //log Success
-                        AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Success:squeezedSyrup", $"{(int)level}", $"{level}");
-                        AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                        AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Success:squeezedSyrup", $"{(int)level}", $"{level}");
+                        AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Success", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                         PlaySound(successSound);
                         timeToSqueeze = 0;
@@ -1421,8 +1421,8 @@ public class LevelManager : MonoBehaviour
                         elapsedTime = 0;
 
                         //log next level
-                        AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                        AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                        AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                        AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     }
 
@@ -1433,8 +1433,8 @@ public class LevelManager : MonoBehaviour
                 if (fallenObjects.Contains("syrup_renderer"))
                 {
                     //log fail
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Fail:fallenObject=syrup", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Fail:fallenObject", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Fail:fallenObject=syrup", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Fail:fallenObject", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
                     level = Levels.Final;
                     Debug.Log("Done");
@@ -1442,8 +1442,8 @@ public class LevelManager : MonoBehaviour
                     elapsedTime = 0;
 
                     //log next level
-                    AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
-                    AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
+                    AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextLevel", $"{(int)level}", $"{level}");
+                    AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextLevel", $"{(int)level}", $"{level}", $"{elapsedTime}");
                 }
 
 
@@ -1571,7 +1571,7 @@ public class LevelManager : MonoBehaviour
             if (hit.gameObject.name == "completeBowl_collider") // Successful broken over bowl
             {
                 //log poured egg
-                AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
+                AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"pouredObject:{grabbedObject.name}", $"{(int)level}", $"{level}");
                 // Add object to list
                 if (!pouredObjects.Contains(grabbedObject))
                     pouredObjects.Add(grabbedObject);
@@ -1648,8 +1648,8 @@ public class LevelManager : MonoBehaviour
             running = true;
 
             // log start
-            AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Start", $"{(int)level}", $"{level}");
-            AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Start", $"{(int)level}", $"{level}", $"{elapsedTime}");
+            AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Start", $"{(int)level}", $"{level}");
+            AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Start", $"{(int)level}", $"{level}", $"{elapsedTime}");
         }
         else
         {
@@ -1666,8 +1666,8 @@ public class LevelManager : MonoBehaviour
             running = false;
 
             // log pause
-            AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"Pause", $"{(int)level}", $"{level}");
-            AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"Pause", $"{(int)level}", $"{level}", $"{elapsedTime}");
+            AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"Pause", $"{(int)level}", $"{level}");
+            AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"Pause", $"{(int)level}", $"{level}", $"{elapsedTime}");
 
             return;
         }
@@ -1732,8 +1732,8 @@ public class LevelManager : MonoBehaviour
         }
 
         // log next button
-        AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"NextBtn", $"{(int)level}", $"{level}");
-        AddToLevelBuffer(StreamlinedInputManager.Now, Events.LevelChange, $"NextBtn", $"{(int)level}", $"{level}", $"{elapsedTime}");
+        AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"NextBtn", $"{(int)level}", $"{level}");
+        AddToLevelBuffer(StreamlinedInputManager_LR.Now, Events.LevelChange, $"NextBtn", $"{(int)level}", $"{level}", $"{elapsedTime}");
     }
 
     public void OnToggleChange(bool toggle)

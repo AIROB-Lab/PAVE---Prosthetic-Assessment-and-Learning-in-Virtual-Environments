@@ -96,13 +96,13 @@ public class HandController_LR : MonoBehaviour
 
     }
 
-    // Update is called once per frame => TESTING
-    void Update()
-    {
+    //// Update is called once per frame => TESTING
+    //void Update()
+    //{
 
-    }
+    //}
 
-    private void FixedUpdate()
+    private void Update()
     {
         DOA_mj[] _doa_mujoco = new DOA_mj[DOA_mujoco.Length];
         DOA_mocap[] _doa_mocap = new DOA_mocap[DOA_mocap.Length];
@@ -159,8 +159,8 @@ public class HandController_LR : MonoBehaviour
 
     private float GetCurrentValue(DOA_struct doa_struct, int samplesBack = 0, float timeBack = 0)
     {
-        // object test = StreamlinedInputManager.udpReceiver.getUdpObjects(0, 1, true);
-        // object test2 = StreamlinedInputManager.udpReceiver.getUdpObjects(0, 1);
+        // object test = StreamlinedInputManager_LR.udpReceiver.getUdpObjects(0, 1, true);
+        // object test2 = StreamlinedInputManager_LR.udpReceiver.getUdpObjects(0, 1);
         object[] data = null;
         float currentValue = 0;
 
@@ -171,7 +171,7 @@ public class HandController_LR : MonoBehaviour
         /// WFE, WUD: in(0,100); out(1,-1)
         /// WPS: in(50,100); out(-1,1)
         /// </summary>
-        data = StreamlinedInputManager.udpReceiver.getData(UDPCategory, doa_struct.UDPSubCategory, samplesBack, timeBack);
+        data = StreamlinedInputManager_LR.udpReceiver.getData(UDPCategory, doa_struct.UDPSubCategory, samplesBack, timeBack);
         if (data != null) currentValue = Convert.ToSingle(data[0]).Remap(doa_struct.mapping_in.x, doa_struct.mapping_in.y, doa_struct.mapping_out.x, doa_struct.mapping_out.y);
 
 

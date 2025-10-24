@@ -32,7 +32,7 @@ public class FollowTracker : MonoBehaviour
         Invoke("StartTracking", 3);
     }
 
-    private void FixedUpdate()
+    private void Update()
     {
         // only start tracking after a set amount of time
         if (!trackingStarted) return;
