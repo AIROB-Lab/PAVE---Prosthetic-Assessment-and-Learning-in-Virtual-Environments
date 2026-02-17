@@ -132,6 +132,7 @@ public class HIL_Manager : MonoBehaviour
         //public bool RemapToIncomingRange;
         public HIL_phases phase;
         public bool feedback;
+        public byte FB_Subcategory;
         public DOA[] doas;
     }
 
@@ -176,6 +177,11 @@ public class HIL_Manager : MonoBehaviour
     [SerializeField]
 
     public PseudoFeedbackConfig[] pseudoFeedbackConfig;
+    public byte FB_Category;
+    [SerializeField]
+    bool sendTerminalState;
+    [SerializeField]
+    bool sendBoxStats;
 
 
     private void Awake()
@@ -313,6 +319,8 @@ public class HIL_Manager : MonoBehaviour
                     print("phase: Object is not connected to hand anymore in Grasp phase");
                     // Go to None
                     currentPhase = HIL_phases.None;
+                    // terminal state indicating failure
+                    this.terminal_state = 2;
                     break;
                 }
                 break;
@@ -333,6 +341,8 @@ public class HIL_Manager : MonoBehaviour
 
                     // Switch to phase none
                     currentPhase = HIL_phases.None;
+                    // terminal state indicating failure
+                    this.terminal_state = 2;
                     break;
                 }
 
@@ -346,6 +356,8 @@ public class HIL_Manager : MonoBehaviour
 
                     // Switch to phase none
                     currentPhase = HIL_phases.None;
+                    // terminal state indicating failure
+                    this.terminal_state = 2;
                     break;
                 }
 
@@ -389,6 +401,7 @@ public class HIL_Manager : MonoBehaviour
                 if (StreamlinedInputManager.Now - timoutStart > timoutTime)
                 {
                     currentPhase = HIL_phases.None;
+                    this.terminal_state = 1;                                    // added teminal state
                 }
 
                 break;
@@ -418,7 +431,12 @@ public class HIL_Manager : MonoBehaviour
             case HIL_phases.Reach:
 
                 // if timout or target reach generate new one => just timout for now
-                if (StreamlinedInputManager.Now - timoutStart > timoutTime) currentPhase = HIL_phases.None;
+                // could add terminal signal here (within if statement)
+                if (StreamlinedInputManager.Now - timoutStart > timoutTime)
+                {
+                    currentPhase = HIL_phases.None;
+                    this.terminal_state = 1;                                 // added teminal state
+                }
 
                 break;
 
@@ -463,6 +481,7 @@ public class HIL_Manager : MonoBehaviour
         }
     }
 
+    double terminal_state;
     private void CheckSendPseudoLabelToLibEMG()
     {
         // find current phase and send out feedback
@@ -470,12 +489,81 @@ public class HIL_Manager : MonoBehaviour
         {
             if (currentPhase == phaseConfig.phase && phaseConfig.feedback)
             {
+                // check how many doas phaseconfig has
+                int doaCount = phaseConfig.doas != null ? phaseConfig.doas.Length : 0;
+
+                // Theres no difference btw. FB elements -> always returns same hardcoded stuff
+                // Current stuff is okay for grasp phase (and partially release phase)
+                // create message array of correct size
+                double[] message = new double[doaCount * 2 + (sendTerminalState ? 1 : 0)];
+
+                int i = 0;
+                if (doaCount > 0) {
+                    foreach (DOA doa in phaseConfig.doas)
+                    {
+                        message[i++] = currentStats.activeDiffDOAs[doa].actual;
+                        message[i++] = currentStats.activeDiffDOAs[doa].should;
+                    }
+                }
+
+                if (sendTerminalState) message[i] = this.terminal_state;
+                this.terminal_state = 0;
+
+                if (sendBoxStats) { 
+                    if (currentPhase == HIL_phases.Transport || currentPhase == HIL_phases.Release)
+                    {
+                        // add feedback for box position
+                        Vector3 actualBoxPosition = TB.transform.position;
+                        Vector3 targetBoxPosition = shdwTb_geom.transform.position;
+
+                        // Actual position
+                        message[i++] = actualBoxPosition.x;
+                        message[i++] = actualBoxPosition.y;
+                        message[i++] = actualBoxPosition.z;
+
+                        // Target position
+                        message[i++] = targetBoxPosition.x;
+                        message[i++] = targetBoxPosition.y;
+                        message[i++] = targetBoxPosition.z;
+                    }
+                    if (currentPhase == HIL_phases.Release) {
+                        // add feedback for box pose
+                        Quaternion actualBoxPose = TB.transform.rotation;
+                        Quaternion targetBoxPose = shdwTb_geom.transform.rotation;
+
+                        // Actual rotation
+                        message[i++] = actualBoxPose.x;
+                        message[i++] = actualBoxPose.y;
+                        message[i++] = actualBoxPose.z;
+                        message[i++] = actualBoxPose.w;
+
+                        // Target rotation
+                        message[i++] = targetBoxPose.x;
+                        message[i++] = targetBoxPose.y;
+                        message[i++] = targetBoxPose.z;
+                        message[i++] = targetBoxPose.w;
+                    }
+                }
+
+                /*
                 // ------------ ToDO to be made nicer --------------------
                 // hardcoded pseudolabel structure for libEMG as one array
-                double[] message = { currentStats.activeDiffDOAs[DOA.HOC].actual, currentStats.activeDiffDOAs[DOA.HOC].should, currentStats.activeDiffDOAs[DOA.WFE].actual,
-                currentStats.activeDiffDOAs[DOA.WFE].should, currentStats.activeDiffDOAs[DOA.WPS].actual, currentStats.activeDiffDOAs[DOA.WPS].should };
+                double[] message;
+                if (this.sendTermialState)
+                {
+                    message = new double[] { currentStats.activeDiffDOAs[DOA.HOC].actual, currentStats.activeDiffDOAs[DOA.HOC].should, currentStats.activeDiffDOAs[DOA.WFE].actual,
+                    currentStats.activeDiffDOAs[DOA.WFE].should, currentStats.activeDiffDOAs[DOA.WPS].actual, currentStats.activeDiffDOAs[DOA.WPS].should, this.terminal_state };
+                    this.terminal_state = 0;                                    // reset terminal state back to 0 if set to 1 or 2
+                }
+                else
+                {
+                    message = new double[] { currentStats.activeDiffDOAs[DOA.HOC].actual, currentStats.activeDiffDOAs[DOA.HOC].should, currentStats.activeDiffDOAs[DOA.WFE].actual,
+                    currentStats.activeDiffDOAs[DOA.WFE].should, currentStats.activeDiffDOAs[DOA.WPS].actual, currentStats.activeDiffDOAs[DOA.WPS].should };
+                }
+                */
+
                 //Send Stats
-                SimUdpSender.SendArrayAsUDPmessage(array: message, dataType: (6, 0), sendWithLastUdpTs: true);
+                SimUdpSender.SendArrayAsUDPmessage(array: message, dataType: (FB_Category, phaseConfig.FB_Subcategory), sendWithLastUdpTs: true);
                 //print(string.Join(",", message));
             }
         }
