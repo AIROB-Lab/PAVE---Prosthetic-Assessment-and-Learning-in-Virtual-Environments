@@ -80,6 +80,7 @@ public class HIL_Manager : MonoBehaviour
         public bool RemapToIncomingRange;
         public Vector3 hdToTarget = new();
         public Vector3 hdToStart = new();
+        public Vector3 TBstartPos = new();
 
         public Dictionary<DOA, diffDOA> activeDiffDOAs = new();
 
@@ -132,7 +133,6 @@ public class HIL_Manager : MonoBehaviour
         //public bool RemapToIncomingRange;
         public HIL_phases phase;
         public bool feedback;
-        public byte FB_Subcategory;
         public DOA[] doas;
     }
 
@@ -178,10 +178,9 @@ public class HIL_Manager : MonoBehaviour
 
     public PseudoFeedbackConfig[] pseudoFeedbackConfig;
     public byte FB_Category;
+    public byte FB_Subcategory;
     [SerializeField]
-    bool sendTerminalState;
-    [SerializeField]
-    bool sendBoxStats;
+    bool ReinforcementLearning;
 
 
     private void Awake()
@@ -291,6 +290,7 @@ public class HIL_Manager : MonoBehaviour
                     // add other things that need to be set up for Grasp...
                     // - Send ghost hand to grasp
                     BtnSetGhostToTB();
+                    currentStats.TBstartPos = TB.transform.position;
                 }
                 break;
 
@@ -495,7 +495,7 @@ public class HIL_Manager : MonoBehaviour
                 // Theres no difference btw. FB elements -> always returns same hardcoded stuff
                 // Current stuff is okay for grasp phase (and partially release phase)
                 // create message array of correct size
-                double[] message = new double[doaCount * 2 + (sendTerminalState ? 1 : 0)];
+                double[] message = new double[doaCount * 2 + (ReinforcementLearning ? 3 : 0)];
 
                 int i = 0;
                 if (doaCount > 0) {
@@ -506,16 +506,20 @@ public class HIL_Manager : MonoBehaviour
                     }
                 }
 
-                if (sendTerminalState) message[i] = this.terminal_state;
-                this.terminal_state = 0;
+                if (ReinforcementLearning) {
+                    message[i++] = this.terminal_state;
+                    terminal_state = 0;                                            // reset terminal state
 
-                if (sendBoxStats) { 
                     if (currentPhase == HIL_phases.Transport || currentPhase == HIL_phases.Release)
                     {
                         // add feedback for box position
-                        Vector3 actualBoxPosition = TB.transform.position;
-                        Vector3 targetBoxPosition = shdwTb_geom.transform.position;
+                        Vector3 startBoxPosition = currentStats.TBstartPos;                                 // check variable correct
+                        Vector3 actualBoxPosition = TB.transform.position;                                  // check variable correct
+                        Vector3 targetBoxPosition = shdwTb_geom.transform.position;                         // check variable correct
 
+                        message[i++] = path_completion_ratio(startBoxPosition, actualBoxPosition, targetBoxPosition);
+
+                        /*
                         // Actual position
                         message[i++] = actualBoxPosition.x;
                         message[i++] = actualBoxPosition.y;
@@ -525,12 +529,21 @@ public class HIL_Manager : MonoBehaviour
                         message[i++] = targetBoxPosition.x;
                         message[i++] = targetBoxPosition.y;
                         message[i++] = targetBoxPosition.z;
+                        */
+                    } else
+                    {
+                        message[i++] = 0; 
                     }
-                    if (currentPhase == HIL_phases.Release) {
-                        // add feedback for box pose
-                        Quaternion actualBoxPose = TB.transform.rotation;
-                        Quaternion targetBoxPose = shdwTb_geom.transform.rotation;
 
+                    if (currentPhase == HIL_phases.Release) {
+
+                        // add feedback for box pose
+                        Quaternion actualBoxPose = TB.transform.rotation;                                   // check variable correct
+                        Quaternion targetBoxPose = shdwTb_geom.transform.rotation;                          // check variable corrent
+
+                        message[i++] = calc_abs_orintation_difference(actualBoxPose, targetBoxPose);
+
+                        /*
                         // Actual rotation
                         message[i++] = actualBoxPose.x;
                         message[i++] = actualBoxPose.y;
@@ -542,6 +555,11 @@ public class HIL_Manager : MonoBehaviour
                         message[i++] = targetBoxPose.y;
                         message[i++] = targetBoxPose.z;
                         message[i++] = targetBoxPose.w;
+                        */
+                    }
+                    else
+                    {
+                        message[i++] = 0;
                     }
                 }
 
@@ -563,7 +581,7 @@ public class HIL_Manager : MonoBehaviour
                 */
 
                 //Send Stats
-                SimUdpSender.SendArrayAsUDPmessage(array: message, dataType: (FB_Category, phaseConfig.FB_Subcategory), sendWithLastUdpTs: true);
+                SimUdpSender.SendArrayAsUDPmessage(array: message, dataType: (FB_Category, FB_Subcategory), sendWithLastUdpTs: true);
                 //print(string.Join(",", message));
             }
         }
@@ -830,5 +848,34 @@ public class HIL_Manager : MonoBehaviour
     public void BtnSetGhostToTarget()
     {
         StartCoroutine(TransformGhostHdToTarget());
+    }
+
+    // Some methods for reward calculations in transport phase
+    private float calc_abs_distance(Vector3 current_pos, Vector3 goal_pos)
+    {
+        return Vector3.Distance(current_pos, goal_pos);
+    }
+
+    private float path_completion_ratio(Vector3 start_pos, Vector3 current_pos, Vector3 goal_pos)
+    {
+        Vector3 sc = current_pos - start_pos;
+        Vector3 cg = goal_pos - current_pos;
+        return sc.magnitude / (sc.magnitude + cg.magnitude);
+    }
+
+    private float distance_projection(Vector3 start_pos, Vector3 current_pos, Vector3 goal_pos, bool clip_negative=false)
+    {
+        Vector3 sc = current_pos - start_pos;
+        Vector3 d = goal_pos - start_pos;
+        float projection = Vector3.Dot(sc, d) / Vector3.Dot(d, d);
+        if (clip_negative && projection < 0) return 0; 
+        return projection;
+    }
+
+    private float calc_abs_orintation_difference(Quaternion orientation1, Quaternion orientation2)
+    {
+        float dot = Quaternion.Dot(orientation1, orientation2);
+        dot = Mathf.Clamp(dot, -1f, 1f);                            // should not be necessary -> using unit quaternions
+        return 1 - dot * dot;
     }
 }
