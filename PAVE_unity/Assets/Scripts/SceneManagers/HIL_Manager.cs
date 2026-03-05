@@ -4,13 +4,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Linq.Expressions;
-using System.Net.NetworkInformation;
 using Unity.VisualScripting;
 using Unity.XR.CoreUtils;
-using Unity.XR.Oculus;
 using UnityEngine;
-using static PastaBoxManager;
 
 public class HIL_Manager : MonoBehaviour
 {
@@ -173,6 +169,7 @@ public class HIL_Manager : MonoBehaviour
     private GameObject palmGhst;
     [SerializeField]
     private GameObject TB;
+    private Transform TB_OrientAligned;
     [SerializeField]
     private float GRASP_DISTANCE;
     [SerializeField]
@@ -184,7 +181,8 @@ public class HIL_Manager : MonoBehaviour
     [SerializeField]
     bool RemapStatsToIncomingRange;
     [SerializeField]
-
+    private float WAIT_IN_TELEPORT;
+    [SerializeField]
     public PseudoFeedbackConfig[] pseudoFeedbackConfig;
     public byte FB_Category;
     public byte FB_Subcategory;
@@ -236,6 +234,9 @@ public class HIL_Manager : MonoBehaviour
             cupboards = GameObject.FindGameObjectsWithTag("cupboard");
             cupboards = cupboards.OrderBy(go => go.name).ToArray();
         }
+
+        TB_OrientAligned = TB.transform.Find("OrientAligned");
+
         currentPhase = HIL_phases.None;
         next_currPhase = HIL_phases.None;
     }
@@ -502,7 +503,7 @@ public class HIL_Manager : MonoBehaviour
                 
                 // Compute Orientational devaiation
                 // ToDo: ghstTB orient is not correct
-                currentStats.TBOrientation = TB.transform.rotation;
+                currentStats.TBOrientation = TB_OrientAligned.rotation;
                 currentStats.ghstTBOrientation = shdwTb_geom.transform.rotation;
                 currentStats.orientationalDeviation = calc_abs_orientation_difference(currentStats.TBOrientation, currentStats.ghstTBOrientation);
             }
@@ -715,7 +716,7 @@ public class HIL_Manager : MonoBehaviour
         for (int i = 0; i < meshRenderer.Length; i++) meshRenderer[i].enabled = false;
 
         MjState.TeleportMjRoot(TB.GetComponentInChildren<MjFreeJoint>(), newPos, false);
-        yield return new WaitForSeconds(0.5f); 
+        yield return new WaitForSeconds(WAIT_IN_TELEPORT); 
         MjState.TeleportMjRoot(TB.GetComponentInChildren<MjFreeJoint>(), newPos, newRot);
         for (int i = 0; i < meshRenderer.Length; i++) meshRenderer[i].enabled = true;
 
@@ -731,10 +732,10 @@ public class HIL_Manager : MonoBehaviour
         yield return null;
     }
 
-    public (GameObject, InteractTaskConfig.TbOris, float) CreateRandomInteractConf(GameObject excludedShelf = null)
+    public (GameObject, InteractTaskConfig.TbOris, float) CreateRandomInteractConf(GameObject[] excludedShelfs = null)
     {
         // get random shelf
-        GameObject shelf = GetRandomShelf(excludedShelf);
+        GameObject shelf = GetRandomShelf(excludedShelfs);
 
         // create random pose and z rotation fitted to interact task
         int orisLen = Enum.GetValues(typeof(InteractTaskConfig.TbOris)).Length;
@@ -746,7 +747,7 @@ public class HIL_Manager : MonoBehaviour
         return (shelf, ori, yRot);
     }
 
-    private GameObject GetRandomShelf(GameObject excludedShelf = null)
+    private GameObject GetRandomShelf(GameObject[] excludedShelfs = null)
     {
         // get cupboard
         GameObject cupboard = cupboards[UnityEngine.Random.Range(0, cupboards.Length)];
@@ -759,15 +760,23 @@ public class HIL_Manager : MonoBehaviour
             Shelf rdShelf = (Shelf)UnityEngine.Random.Range(0, shelfsLen);  // 0 to 3
             shelf = GetShelfOfCupboard(cupboard, rdShelf);
         }
-        while (GameObject.ReferenceEquals(shelf, excludedShelf));
-
+        while (excludedShelfs.Contains(shelf));
+        
         return shelf;
     }
 
     public void NewRandomInteractTaskConf()
     {
-        (GameObject rdStartShelf, InteractTaskConfig.TbOris rdTbOrisStart, float rdYRotStart) = CreateRandomInteractConf();
-        (GameObject rdTargetShelf, InteractTaskConfig.TbOris rdTbOrisTarget, float rdYRotTarget) = CreateRandomInteractConf(excludedShelf: rdStartShelf);
+        List<GameObject> excludedShelfs = new List<GameObject>();
+        GameObject prevStartShelf = null;
+
+        if (currentInteractTaskConfig != null)
+        {
+            excludedShelfs.Add(currentInteractTaskConfig.targetShelf); excludedShelfs.Add(currentInteractTaskConfig.startShelf);
+        }
+        (GameObject rdStartShelf, InteractTaskConfig.TbOris rdTbOrisStart, float rdYRotStart) = CreateRandomInteractConf(excludedShelfs.ToArray());
+        excludedShelfs.Add(rdStartShelf);
+        (GameObject rdTargetShelf, InteractTaskConfig.TbOris rdTbOrisTarget, float rdYRotTarget) = CreateRandomInteractConf(excludedShelfs.ToArray());
 
         // create a new config
         currentInteractTaskConfig = new InteractTaskConfig(rdStartShelf, rdTbOrisStart, rdYRotStart, rdTargetShelf, rdTbOrisTarget, rdYRotTarget);
