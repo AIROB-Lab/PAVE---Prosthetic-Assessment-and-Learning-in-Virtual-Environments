@@ -80,7 +80,12 @@ public class HIL_Manager : MonoBehaviour
         public bool RemapToIncomingRange;
         public Vector3 hdToTarget = new();
         public Vector3 hdToStart = new();
-        public Vector3 TBstartPos = new();
+        public Vector3 TBToStart = new();
+        public Vector3 TBToTarget = new();
+        public float pathCompletionRatio = new();
+        public Quaternion TBOrientation = new();
+        public Quaternion ghstTBOrientation = new();
+        public float orientationalDeviation = new();
 
         public Dictionary<DOA, diffDOA> activeDiffDOAs = new();
 
@@ -173,6 +178,10 @@ public class HIL_Manager : MonoBehaviour
     [SerializeField]
     private float RELEASE_DISTANCE;
     [SerializeField]
+    private float PCR_THRESHOLD;
+    [SerializeField]
+    private float ORIENTDEVIATION_THRESHOLD;
+    [SerializeField]
     bool RemapStatsToIncomingRange;
     [SerializeField]
 
@@ -181,6 +190,7 @@ public class HIL_Manager : MonoBehaviour
     public byte FB_Subcategory;
     [SerializeField]
     bool ReinforcementLearning;
+    private HIL_phases next_currPhase;
 
 
     private void Awake()
@@ -227,6 +237,7 @@ public class HIL_Manager : MonoBehaviour
             cupboards = cupboards.OrderBy(go => go.name).ToArray();
         }
         currentPhase = HIL_phases.None;
+        next_currPhase = HIL_phases.None;
     }
 
 
@@ -242,6 +253,8 @@ public class HIL_Manager : MonoBehaviour
             // send out pseudo labels based on stats and activated phase config
             CheckSendPseudoLabelToLibEMG();
         }
+
+        update_currentphase();  // updates currentPhase after sending PseudolabelToLibEMG -> terminal state is sent right away -> used to wait until phase with feedback
 
         switch (currentEnv)
         {
@@ -273,8 +286,9 @@ public class HIL_Manager : MonoBehaviour
                 // Start new random task config
                 this.NewRandomInteractTaskConf();
 
+
                 // move to next phase
-                currentPhase = HIL_phases.Reach;
+                next_currPhase = HIL_phases.Reach;
 
                 // add other things that need to be set up for Reach...
 
@@ -285,12 +299,11 @@ public class HIL_Manager : MonoBehaviour
                 // check if distance to start is smaller then threshold
                 if (currentStats.hdToStart.magnitude <= GRASP_DISTANCE)
                 {
-                    currentPhase = HIL_phases.Grasp;
+                    next_currPhase = HIL_phases.Grasp;
 
                     // add other things that need to be set up for Grasp...
                     // - Send ghost hand to grasp
                     BtnSetGhostToTB();
-                    currentStats.TBstartPos = TB.transform.position;
                 }
                 break;
 
@@ -299,7 +312,7 @@ public class HIL_Manager : MonoBehaviour
                 // Check if TB does not touch plate anymore => Switch to transport
                 if (CollisionManager.FindCollisionByNames("Grasp_collider_box", currentInteractTaskConfig.startShelf.name, contains: true).Count == 0)
                 {
-                    currentPhase = HIL_phases.Transport;
+                    next_currPhase = HIL_phases.Transport;
 
                     // add other things that need to be set up for Grasp...
                     // - Set ghost to target
@@ -318,7 +331,7 @@ public class HIL_Manager : MonoBehaviour
                 {
                     print("phase: Object is not connected to hand anymore in Grasp phase");
                     // Go to None
-                    currentPhase = HIL_phases.None;
+                    next_currPhase = HIL_phases.None;
                     // terminal state indicating failure
                     this.terminal_state = 2;
                     break;
@@ -330,7 +343,7 @@ public class HIL_Manager : MonoBehaviour
                 if (currentStats.hdToTarget.magnitude <= RELEASE_DISTANCE)
                 {
                     // switch to next: Release
-                    currentPhase = HIL_phases.Release;
+                    next_currPhase = HIL_phases.Release;
                     break;
                 }
 
@@ -340,7 +353,7 @@ public class HIL_Manager : MonoBehaviour
                     print("phase: FAIL - Object is not connected to hand anymore in transport phase");
 
                     // Switch to phase none
-                    currentPhase = HIL_phases.None;
+                    next_currPhase = HIL_phases.None;
                     // terminal state indicating failure
                     this.terminal_state = 2;
                     break;
@@ -352,16 +365,36 @@ public class HIL_Manager : MonoBehaviour
                 // If hand is not connected (check roi or grasp collidere) => Fail => Phase.None
                 if (CollisionManager.FindCollisionBetweenTagAndObj("hand_collider", "Grasp_collider_box").Count == 0)
                 {
+                    // ToDo: successfull task completion should be:
+                    // - box is released -> no colission
+                    // - box is within certain threshold (pos. and orientation)
+
+                    // Check collision shelve - box
+                    if (CollisionManager.FindCollisionByNames("Grasp_collider_box", currentInteractTaskConfig.targetShelf.name, contains: true).Count > 0)
+                    {
+                        // Check box within certain threshold (position and orientation)
+                        if (currentStats.pathCompletionRatio > PCR_THRESHOLD && currentStats.orientationalDeviation < ORIENTDEVIATION_THRESHOLD)
+                        {
+                            // Switch to phase none
+                            next_currPhase = HIL_phases.None;
+                            // Successfull task completion
+                            this.terminal_state = 1;
+                            break;
+                        }
+                    }
+
                     print("phase: FAIL - Object is not connected to hand anymore in transport phase");
 
                     // Switch to phase none
-                    currentPhase = HIL_phases.None;
+                    next_currPhase = HIL_phases.None;
                     // terminal state indicating failure
                     this.terminal_state = 2;
                     break;
                 }
 
                 // ToDo see if we need to differantiate between success and failures => Maybe for rewards or user feedback
+
+               
 
                 break;
 
@@ -381,7 +414,7 @@ public class HIL_Manager : MonoBehaviour
                 this.NewRandomLimbPosTask(2);
 
                 // move to next phase
-                currentPhase = HIL_phases.Reach;
+                next_currPhase = HIL_phases.Reach;
 
                 break;
 
@@ -390,7 +423,7 @@ public class HIL_Manager : MonoBehaviour
                 // check if distance to start is smaller then threshold
                 if (currentStats.hdToStart.magnitude <= GRASP_DISTANCE)
                 {
-                    currentPhase = HIL_phases.Grasp;
+                    next_currPhase = HIL_phases.Grasp;
                     timoutStart = StreamlinedInputManager.Now;
 
                 }
@@ -400,7 +433,7 @@ public class HIL_Manager : MonoBehaviour
                 // if timout or target reach generate new one => just timout for now
                 if (StreamlinedInputManager.Now - timoutStart > timoutTime)
                 {
-                    currentPhase = HIL_phases.None;
+                    next_currPhase = HIL_phases.None;
                     this.terminal_state = 1;                                    // added teminal state
                 }
 
@@ -421,7 +454,7 @@ public class HIL_Manager : MonoBehaviour
                 this.NewRandomTacTask(2);
 
                 // move to next phase
-                currentPhase = HIL_phases.Reach;
+                next_currPhase = HIL_phases.Reach;
 
                 // add other things that need to be set up for Reach...
                 timoutStart = StreamlinedInputManager.Now;
@@ -434,7 +467,7 @@ public class HIL_Manager : MonoBehaviour
                 // could add terminal signal here (within if statement)
                 if (StreamlinedInputManager.Now - timoutStart > timoutTime)
                 {
-                    currentPhase = HIL_phases.None;
+                    next_currPhase = HIL_phases.None;
                     this.terminal_state = 1;                                 // added teminal state
                 }
 
@@ -458,6 +491,20 @@ public class HIL_Manager : MonoBehaviour
                 // the interact task has a separat config to keep track of the more complex structure, use start and target shelfs
                 currentStats.hdToStart = currentInteractTaskConfig.startShelf.transform.position - palm.transform.position;
                 currentStats.hdToTarget = currentInteractTaskConfig.targetShelf.transform.position - palm.transform.position;
+                
+                // Compute path completion ratio
+                Vector3 startShelveTopPos = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
+                Vector3 targetShelveTopPos = currentInteractTaskConfig.targetShelf.transform.position + new Vector3(0, currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
+                Vector3 TBBottomPos = TB.transform.position - this.TB.transform.rotation * new Vector3(0, this.TB.GetComponentInChildren<MjGeom>().Box.Extents.y, 0);
+                currentStats.TBToStart = startShelveTopPos - TBBottomPos;
+                currentStats.TBToTarget = targetShelveTopPos - TBBottomPos;
+                currentStats.pathCompletionRatio = currentStats.TBToStart.magnitude / (currentStats.TBToStart.magnitude + currentStats.TBToTarget.magnitude);
+                
+                // Compute Orientational devaiation
+                // ToDo: ghstTB orient is not correct
+                currentStats.TBOrientation = TB.transform.rotation;
+                currentStats.ghstTBOrientation = shdwTb_geom.transform.rotation;
+                currentStats.orientationalDeviation = calc_abs_orientation_difference(currentStats.TBOrientation, currentStats.ghstTBOrientation);
             }
             if (currentEnv == HIL_env.LimbPos)
             {
@@ -508,28 +555,12 @@ public class HIL_Manager : MonoBehaviour
 
                 if (ReinforcementLearning) {
                     message[i++] = this.terminal_state;
-                    terminal_state = 0;                                            // reset terminal state
+                    this.terminal_state = 0;                                            // reset terminal state
 
                     if (currentPhase == HIL_phases.Transport || currentPhase == HIL_phases.Release)
                     {
                         // add feedback for box position
-                        Vector3 startBoxPosition = currentStats.TBstartPos;                                 // check variable correct
-                        Vector3 actualBoxPosition = TB.transform.position;                                  // check variable correct
-                        Vector3 targetBoxPosition = shdwTb_geom.transform.position;                         // check variable correct
-
-                        message[i++] = path_completion_ratio(startBoxPosition, actualBoxPosition, targetBoxPosition);
-
-                        /*
-                        // Actual position
-                        message[i++] = actualBoxPosition.x;
-                        message[i++] = actualBoxPosition.y;
-                        message[i++] = actualBoxPosition.z;
-
-                        // Target position
-                        message[i++] = targetBoxPosition.x;
-                        message[i++] = targetBoxPosition.y;
-                        message[i++] = targetBoxPosition.z;
-                        */
+                        message[i++] = currentStats.pathCompletionRatio; //path_completion_ratio(startBoxPosition, actualBoxPosition, targetBoxPosition);
                     } else
                     {
                         message[i++] = 0; 
@@ -541,21 +572,7 @@ public class HIL_Manager : MonoBehaviour
                         Quaternion actualBoxPose = TB.transform.rotation;                                   // check variable correct
                         Quaternion targetBoxPose = shdwTb_geom.transform.rotation;                          // check variable corrent
 
-                        message[i++] = calc_abs_orintation_difference(actualBoxPose, targetBoxPose);
-
-                        /*
-                        // Actual rotation
-                        message[i++] = actualBoxPose.x;
-                        message[i++] = actualBoxPose.y;
-                        message[i++] = actualBoxPose.z;
-                        message[i++] = actualBoxPose.w;
-
-                        // Target rotation
-                        message[i++] = targetBoxPose.x;
-                        message[i++] = targetBoxPose.y;
-                        message[i++] = targetBoxPose.z;
-                        message[i++] = targetBoxPose.w;
-                        */
+                        message[i++] = currentStats.orientationalDeviation; // calc_abs_orientation_difference(actualBoxPose, targetBoxPose);
                     }
                     else
                     {
@@ -603,7 +620,7 @@ public class HIL_Manager : MonoBehaviour
             // rotate WPS back to 0
             GhstHandController.OverwriteCurrVal(DOA.WPS, 0);
 
-            // open HOC to let go of box
+            // open HOC to let go of box => ToDo: Check if this is needed for sideways
             GhstHandController.OverwriteCurrVal(DOA.HOC, 0);
 
         }
@@ -872,10 +889,18 @@ public class HIL_Manager : MonoBehaviour
         return projection;
     }
 
-    private float calc_abs_orintation_difference(Quaternion orientation1, Quaternion orientation2)
+    private float calc_abs_orientation_difference(Quaternion orientation1, Quaternion orientation2)
     {
         float dot = Quaternion.Dot(orientation1, orientation2);
         dot = Mathf.Clamp(dot, -1f, 1f);                            // should not be necessary -> using unit quaternions
         return 1 - dot * dot;
+    }
+
+    private void update_currentphase()
+    {
+        // updates the current phase
+        // set after sending feedback -> terminal state is sent
+        // prior phase went from x -> none  => none did not send FB -> terminal state was only sent again when phase was grasp or other phase with FB
+        currentPhase = next_currPhase;
     }
 }
