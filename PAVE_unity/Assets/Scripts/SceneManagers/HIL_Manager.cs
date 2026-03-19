@@ -496,7 +496,7 @@ public class HIL_Manager : MonoBehaviour
                 // Compute path completion ratio
                 Vector3 startShelveTopPos = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
                 Vector3 targetShelveTopPos = currentInteractTaskConfig.targetShelf.transform.position + new Vector3(0, currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
-                Vector3 TBBottomPos = TB.transform.position - this.TB.transform.rotation * new Vector3(0, this.TB.GetComponentInChildren<MjGeom>().Box.Extents.y, 0);
+                Vector3 TBBottomPos = this.TB.transform.position - this.TB.transform.rotation * new Vector3(0, this.TB.GetComponentInChildren<MjGeom>().Box.Extents.y, 0);
                 currentStats.TBToStart = startShelveTopPos - TBBottomPos;
                 currentStats.TBToTarget = targetShelveTopPos - TBBottomPos;
                 currentStats.pathCompletionRatio = currentStats.TBToStart.magnitude / (currentStats.TBToStart.magnitude + currentStats.TBToTarget.magnitude);
