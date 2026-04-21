@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "com.github.mj-unity-extensions": {
-      "version": "file:C:/Users/ho41rybo/Development/GIT/modular-agents/mj-unity-extensions",
+      "version": "file:C:/Users/ho41rybo/Development/modular-agents-main/modular-agents-main/mj-unity-extensions",
       "depth": 0,
       "source": "local",
       "dependencies": {
