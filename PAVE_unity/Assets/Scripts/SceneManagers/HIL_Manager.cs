@@ -7,6 +7,7 @@ using System.Linq;
 using Unity.VisualScripting;
 using Unity.XR.CoreUtils;
 using UnityEngine;
+using static HIL_Manager.Stats;
 
 public class HIL_Manager : MonoBehaviour
 {
@@ -425,14 +426,14 @@ public class HIL_Manager : MonoBehaviour
                 if (currentStats.hdToStart.magnitude <= GRASP_DISTANCE)
                 {
                     next_currPhase = HIL_phases.Grasp;
-                    timoutStart = StreamlinedInputManager.Now;
+                    timeoutStart = StreamlinedInputManager.Now;
 
                 }
                 break;
 
             case HIL_phases.Grasp:
                 // if timout or target reach generate new one => just timout for now
-                if (StreamlinedInputManager.Now - timoutStart > timoutTime)
+                if (StreamlinedInputManager.Now - timeoutStart > timeoutTime)
                 {
                     next_currPhase = HIL_phases.None;
                     this.terminal_state = 1;                                    // added teminal state
@@ -442,8 +443,10 @@ public class HIL_Manager : MonoBehaviour
 
         }
     }
-    public double timoutTime;
-    double timoutStart;
+    public double timeoutTime;
+    public double dwellTime;
+    double timeoutStart;
+    double dwellTimeStart;
     private void PerformTacLoop()
     {
         // ----- START OF HIL PHASES ----- Only None and Reach
@@ -458,7 +461,7 @@ public class HIL_Manager : MonoBehaviour
                 next_currPhase = HIL_phases.Reach;
 
                 // add other things that need to be set up for Reach...
-                timoutStart = StreamlinedInputManager.Now;
+                timeoutStart = StreamlinedInputManager.Now;
 
                 break;
 
@@ -466,10 +469,21 @@ public class HIL_Manager : MonoBehaviour
 
                 // if timout or target reach generate new one => just timout for now
                 // could add terminal signal here (within if statement)
-                if (StreamlinedInputManager.Now - timoutStart > timoutTime)
+                if (!curr_in_tgt(0.125))
+                {
+                    // reset dwell time
+                    dwellTimeStart = StreamlinedInputManager.Now;
+                }
+
+                if (StreamlinedInputManager.Now - timeoutStart > timeoutTime)
                 {
                     next_currPhase = HIL_phases.None;
-                    this.terminal_state = 1;                                 // added teminal state
+                    this.terminal_state = 2;                                 // added teminal state (failure)
+                }
+                else if(StreamlinedInputManager.Now - dwellTimeStart >= dwellTime)
+                {
+                    next_currPhase = HIL_phases.None;
+                    this.terminal_state = 1;                                 // added teminal state (success)
                 }
 
                 break;
@@ -499,7 +513,7 @@ public class HIL_Manager : MonoBehaviour
                 Vector3 TBBottomPos = this.TB.transform.position - this.TB.transform.rotation * new Vector3(0, this.TB.GetComponentInChildren<MjGeom>().Box.Extents.y, 0);
                 currentStats.TBToStart = startShelveTopPos - TBBottomPos;
                 currentStats.TBToTarget = targetShelveTopPos - TBBottomPos;
-                currentStats.pathCompletionRatio = currentStats.TBToStart.magnitude / (currentStats.TBToStart.magnitude + currentStats.TBToTarget.magnitude);
+                currentStats.pathCompletionRatio = computePathCompletionRatio();
                 
                 // Compute Orientational devaiation
                 // ToDo: ghstTB orient is not correct
@@ -911,5 +925,29 @@ public class HIL_Manager : MonoBehaviour
         // set after sending feedback -> terminal state is sent
         // prior phase went from x -> none  => none did not send FB -> terminal state was only sent again when phase was grasp or other phase with FB
         currentPhase = next_currPhase;
+    }
+
+    private float computePathCompletionRatio()
+    {
+        return currentStats.TBToStart.magnitude / (currentStats.TBToStart.magnitude + currentStats.TBToTarget.magnitude);
+    }
+
+    private bool curr_in_tgt(double tolerance)
+    {
+        // check if n_dof are within thire target
+        if (currentStats?.activeDiffDOAs != null)
+        {
+            foreach (var doa in currentStats.activeDiffDOAs)
+            {
+                if(Math.Abs(doa.Value.diff) <= tolerance) 
+                {
+                    continue; 
+                } else 
+                { 
+                    return false; 
+                }
+            }
+        }
+        return true;
     }
 }
