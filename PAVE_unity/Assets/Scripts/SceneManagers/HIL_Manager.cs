@@ -191,10 +191,15 @@ public class HIL_Manager : MonoBehaviour
     bool ReinforcementLearning;
     private HIL_phases next_currPhase;
 
+    [SerializeField]
+    private int randomSeed = 42;
+
 
     private void Awake()
     {
         Application.targetFrameRate = 90;
+
+        UnityEngine.Random.InitState(randomSeed);
 
         // create stats obj
         currentStats = new Stats(new DOA[] { DOA.HOC, DOA.WFE, DOA.WPS });
