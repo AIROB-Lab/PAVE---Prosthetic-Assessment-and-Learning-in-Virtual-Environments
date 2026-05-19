@@ -474,7 +474,7 @@ public class HIL_Manager : MonoBehaviour
 
                 // if timout or target reach generate new one => just timout for now
                 // could add terminal signal here (within if statement)
-                if (!curr_in_tgt(0.125))
+                if (!curr_in_tgt(0.25))
                 {
                     // reset dwell time
                     dwellTimeStart = StreamlinedInputManager.Now;
