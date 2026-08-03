@@ -768,6 +768,8 @@ public class HIL_Manager : MonoBehaviour
 
     private GameObject GetRandomShelf(GameObject[] excludedShelfs = null)
     {
+        if (excludedShelfs == null) excludedShelfs = new GameObject[0];
+
         // get cupboard
         GameObject cupboard = cupboards[UnityEngine.Random.Range(0, cupboards.Length)];
 
