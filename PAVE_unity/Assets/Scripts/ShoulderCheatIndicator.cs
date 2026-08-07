@@ -3,8 +3,9 @@ using UnityEngine;
 public class ShoulderCheatIndicator : MonoBehaviour
 {
     [Header("References")]
-    public Transform arrow;            // the arrow object
-    public Renderer cylinderRenderer;  // the cylinder's renderer
+    public Transform actualArrow;      // arrow on the real hand (hannes_..._MG)
+    public Transform ghostArrow;       // arrow on the ghost/target hand
+    public Renderer cylinderRenderer;  // this cylinder's renderer
 
     [Header("Settings")]
     public float toleranceDegrees = 15f;
@@ -14,15 +15,17 @@ public class ShoulderCheatIndicator : MonoBehaviour
 
     void Update()
     {
-        // Angle between the arrow's "up" direction and world up
-        float deviationAngle = Vector3.Angle(arrow.up, Vector3.up);
+        if (actualArrow == null || ghostArrow == null)
+            return;
 
+        // Green only when the real hand's local X axis aligns with the ghost's local X axis
+        float deviationAngle = Vector3.Angle(actualArrow.right, ghostArrow.right);
         bool good = deviationAngle <= toleranceDegrees;
 
         if (cylinderRenderer != null)
             cylinderRenderer.material.color = good ? Color.green : Color.red;
 
         if (logDebug)
-            Debug.Log($"deviationAngle={deviationAngle:F1}, good={good}");
+            Debug.Log($"[{name}] deviationAngle={deviationAngle:F1}, good={good}");
     }
 }
