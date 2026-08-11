@@ -794,9 +794,9 @@ public class HIL_Manager : MonoBehaviour
 
             // actuate WFE to get straight arm adjusted to cupboard level
             // Pick a wrist flex/extend value depending on which shelf height is being targeted
-            if (currentInteractTaskConfig.targetShelf.name.Contains("bot")) GhstHandController.OverwriteCurrVal(DOA.WFE, 0);
-            else if (currentInteractTaskConfig.targetShelf.name.Contains("mid")) GhstHandController.OverwriteCurrVal(DOA.WFE, 0.5f);
-            else if (currentInteractTaskConfig.targetShelf.name.Contains("top")) GhstHandController.OverwriteCurrVal(DOA.WFE, 1);
+            if (currentInteractTaskConfig.targetShelf.name.Contains("bot")) GhstHandController.OverwriteCurrVal(DOA.WFE, -0.5f);
+            else if (currentInteractTaskConfig.targetShelf.name.Contains("mid")) GhstHandController.OverwriteCurrVal(DOA.WFE, 0);
+            else if (currentInteractTaskConfig.targetShelf.name.Contains("top")) GhstHandController.OverwriteCurrVal(DOA.WFE, 0.6f);
 
 
         }
