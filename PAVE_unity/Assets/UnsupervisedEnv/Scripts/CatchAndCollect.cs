@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Mujoco;
+using Mujoco.Extensions;
 
 public class CatchAndCollect : MonoBehaviour
 {

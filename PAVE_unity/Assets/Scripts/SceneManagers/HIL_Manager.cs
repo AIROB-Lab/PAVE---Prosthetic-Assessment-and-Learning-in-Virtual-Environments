@@ -11,6 +11,7 @@ using Unity.XR.CoreUtils;
 using Unity.XR.Oculus;
 using UnityEngine;
 using static PastaBoxManager;
+using Mujoco.Extensions;
 
 public class HIL_Manager : MonoBehaviour
 {

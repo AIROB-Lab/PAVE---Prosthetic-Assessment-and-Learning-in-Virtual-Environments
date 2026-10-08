@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Mujoco;
+using Mujoco.Extensions;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Events;
