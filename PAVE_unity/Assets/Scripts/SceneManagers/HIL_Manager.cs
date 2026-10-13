@@ -673,8 +673,16 @@ public class HIL_Manager : MonoBehaviour
     private void CheckSendPseudoLabelToLibEMG()
     {
         // find current phase and send out feedback
-        foreach (var phaseConfig in this.pseudoFeedbackConfig)
+        //foreach (var phaseConfig in this.pseudoFeedbackConfig)
+        //{
+        //    if (currentPhase == phaseConfig.phase && phaseConfig.feedback)
+        //    {
+                // find current phase and send out feedback
+        for (int k = 0; k < this.pseudoFeedbackConfig.Length; k++)
         {
+            var phaseConfig = this.pseudoFeedbackConfig[k];
+            if (k == studyFeedbackElement && !studyStarted) continue;   // chosen element waits for Start Study Cell
+
             if (currentPhase == phaseConfig.phase && phaseConfig.feedback)
             {
                 // check how many doas phaseconfig has
@@ -1090,6 +1098,17 @@ public class HIL_Manager : MonoBehaviour
     public void BtnSetGhostToTarget()
     {
         StartCoroutine(TransformGhostHdToTarget());
+    }
+    public bool studyStarted = false;   // Element 1 feedback is only sent after Start Study Cell is clicked
+    public int studyFeedbackElement = 1;   // which Pseudo Feedback Config element waits for Start Study Cell (set per scene)
+
+    /// <summary>UI button hook: Start Study Cell. First click starts the feedback, second click stops it.</summary>
+    public void BtnStartStudy()
+    {
+        studyStarted = !studyStarted;
+        GameObject.Find("StartStudyCell").GetComponent<UnityEngine.UI.Image>().color =
+            studyStarted ? Color.red : Color.white;
+        Debug.Log("Study started: " + studyStarted);
     }
 
     // Some methods for reward calculations in transport phase
