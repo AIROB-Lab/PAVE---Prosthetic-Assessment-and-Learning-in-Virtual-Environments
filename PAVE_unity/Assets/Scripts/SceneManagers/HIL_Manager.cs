@@ -572,7 +572,7 @@ public class HIL_Manager : MonoBehaviour
                 // if timout or target reach generate new one => just timout for now
                 // could add terminal signal here (within if statement)
                 // As soon as the DOAs fall outside tolerance, restart the "how long have we been in target" dwell timer
-                if (!curr_in_tgt(0.25))
+                if (!curr_in_tgt(0.2))
                 {
                     // reset dwell time
                     dwellTimeStart = StreamlinedInputManager.Now;
