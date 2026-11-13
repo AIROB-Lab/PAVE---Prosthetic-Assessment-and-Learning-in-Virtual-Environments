@@ -245,6 +245,12 @@ public class HIL_Manager : MonoBehaviour
     [SerializeField]
     private int randomSeed = 42;   // seed for Unity's RNG so trial sequences are reproducible across runs
 
+    // LimbPos: tilt of the whole ghost hand + forearm per shelf height (degrees).
+    // + = hand points upwards, - = hand points downwards, 0 = straight (horizontal).
+    [SerializeField] private float LIMBPOS_PITCH_TOP = 45f;    // top shelf: whole hand points 45 deg up
+    [SerializeField] private float LIMBPOS_PITCH_MID = 0f;     // middle shelf: straight
+    [SerializeField] private float LIMBPOS_PITCH_BOT = -45f;   // bottom shelf: whole hand points 45 deg down
+
 
     private void Awake()
     {
@@ -415,6 +421,7 @@ public class HIL_Manager : MonoBehaviour
                 if (currentInteractTaskConfig.tbTouched && CollisionManager.FindCollisionBetweenTagAndObj("hand_collider", "Grasp_collider_box").Count == 0)
                 {
                     print("phase: Object is not connected to hand anymore in Grasp phase");
+                    InteractTrialLogger.SetResult("fail_grasp");                       // trial log: grasp failed
                     // Go to None
                     next_currPhase = HIL_phases.None;
                     // terminal state indicating failure
@@ -437,6 +444,7 @@ public class HIL_Manager : MonoBehaviour
                 if (CollisionManager.FindCollisionBetweenTagAndObj("hand_collider", "Grasp_collider_box").Count == 0)
                 {
                     print("phase: FAIL - Object is not connected to hand anymore in transport phase");
+                    InteractTrialLogger.SetResult("fail_transport");                   // trial log: dropped during transport
 
                     // Switch to phase none
                     next_currPhase = HIL_phases.None;
@@ -468,6 +476,7 @@ public class HIL_Manager : MonoBehaviour
                             next_currPhase = HIL_phases.None;
                             // Successfull task completion
                             this.terminal_state = 1;
+                            InteractTrialLogger.SetResult("success");                  // trial log: success
                             break;
                         }
                     }
@@ -479,6 +488,7 @@ public class HIL_Manager : MonoBehaviour
                     next_currPhase = HIL_phases.None;
                     // terminal state indicating failure
                     this.terminal_state = 2;
+                    InteractTrialLogger.SetResult("fail_release");                     // trial log: released but not placed correctly
                     break;
                 }
 
@@ -584,7 +594,7 @@ public class HIL_Manager : MonoBehaviour
                     next_currPhase = HIL_phases.None;
                     this.terminal_state = 2;                                 // added teminal state (failure)
                 }
-                else if(StreamlinedInputManager.Now - dwellTimeStart >= dwellTime)
+                else if (StreamlinedInputManager.Now - dwellTimeStart >= dwellTime)
                 {
                     // Held within tolerance long enough -> success
                     next_currPhase = HIL_phases.None;
@@ -599,7 +609,7 @@ public class HIL_Manager : MonoBehaviour
     /// <summary>Finds the child object representing a specific shelf level ("level_bot/mid/top") on a cupboard.</summary>
     private GameObject GetShelfOfCupboard(GameObject cupboard, Shelf shelf)
     {
-       return cupboard.GetNamedChild("level_" + shelf.ToString());
+        return cupboard.GetNamedChild("level_" + shelf.ToString());
     }
 
     /// <summary>
@@ -672,12 +682,16 @@ public class HIL_Manager : MonoBehaviour
     /// </summary>
     private void CheckSendPseudoLabelToLibEMG()
     {
+        // Only send once the prosthetic hand's values have been refreshed with the newest prediction.
+        // Otherwise the packet would carry the new timestamp but the previous position (direction = 0 -> NaN label).
+        if (PrsthHandController.usedUdpTs != StreamlinedInputManager.udpReceiver.lastReceivedUDPTS) return;
+
         // find current phase and send out feedback
         //foreach (var phaseConfig in this.pseudoFeedbackConfig)
         //{
         //    if (currentPhase == phaseConfig.phase && phaseConfig.feedback)
         //    {
-                // find current phase and send out feedback
+        // find current phase and send out feedback
         for (int k = 0; k < this.pseudoFeedbackConfig.Length; k++)
         {
             var phaseConfig = this.pseudoFeedbackConfig[k];
@@ -695,7 +709,8 @@ public class HIL_Manager : MonoBehaviour
                 double[] message = new double[doaCount * 2 + (ReinforcementLearning ? 3 : 0)];
 
                 int i = 0;
-                if (doaCount > 0) {
+                if (doaCount > 0)
+                {
                     foreach (DOA doa in phaseConfig.doas)
                     {
                         message[i++] = currentStats.activeDiffDOAs[doa].actual;
@@ -703,7 +718,8 @@ public class HIL_Manager : MonoBehaviour
                     }
                 }
 
-                if (ReinforcementLearning) {
+                if (ReinforcementLearning)
+                {
                     // Append terminal state (0=ongoing, 1=success, 2=failure) then reset it so it's only reported once
                     message[i++] = this.terminal_state;
                     this.terminal_state = 0;                                            // reset terminal state
@@ -713,12 +729,14 @@ public class HIL_Manager : MonoBehaviour
                         // add feedback for box position
                         // Only meaningful once the box is actually being carried
                         message[i++] = currentStats.pathCompletionRatio; //path_completion_ratio(startBoxPosition, actualBoxPosition, targetBoxPosition);
-                    } else
+                    }
+                    else
                     {
                         message[i++] = 0;
                     }
 
-                    if (currentPhase == HIL_phases.Release) {
+                    if (currentPhase == HIL_phases.Release)
+                    {
 
                         // add feedback for box pose
                         Quaternion actualBoxPose = TB.transform.rotation;                                   // check variable correct
@@ -875,7 +893,7 @@ public class HIL_Manager : MonoBehaviour
         if (currentInteractTaskConfig.startPose == InteractTaskConfig.TbOris.straight)
         {
             // as long as this does not make any problems, set pos and ori directly // using shdwTb geom because it consists of a single box
-            newPos = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y+0.1f, 0);
+            newPos = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y + 0.1f, 0);
 
             // set TB orientation
             newRot = currentInteractTaskConfig.startShelf.transform.rotation * Quaternion.Euler(0, currentInteractTaskConfig.tbYRotationStart, 0);
@@ -886,7 +904,7 @@ public class HIL_Manager : MonoBehaviour
             newRot = currentInteractTaskConfig.startShelf.transform.rotation * Quaternion.Euler(45, 0, 90);
 
             // change position and adjust for rotation
-            newPos = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y+0.1f, 0);
+            newPos = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y + 0.1f, 0);
         }
         // Hide the box while it's being teleported so the player doesn't see it snap/jump
         MeshRenderer[] meshRenderer = TB.transform.GetComponentsInChildren<MeshRenderer>();
@@ -906,13 +924,19 @@ public class HIL_Manager : MonoBehaviour
     /// <summary>
     /// Positions the ghost hand's forearm mocap anchor at a given world position/orientation
     /// (used by LimbPos to place the spatial target for the hand to reach).
+    /// pitchDeg tilts the whole hand + forearm: + = hand points up, - = hand points down, 0 = straight.
+    /// The tilt pivots around the hand, so the palm stays at the same target spot and only the forearm swings.
     /// </summary>
-    private IEnumerator TransformGhstHandWForarmWeld(Vector3 pos, Quaternion ori)
+    private IEnumerator TransformGhstHandWForarmWeld(Vector3 pos, Quaternion ori, float pitchDeg = 0f)
     {
+        // Tilt around the shelf's sideways (X) axis. In Unity a negative X rotation turns +Z (the direction the
+        // hand points into the shelf) upwards, so -pitchDeg makes + = up.
+        Quaternion tilted = ori * Quaternion.Euler(-pitchDeg, 0, 0);
 
         // Offset the anchor slightly up and back from the target so the hand lines up naturally over it
-        GhstHandForearmMocap.transform.position = pos + new Vector3(0, 0.15f, 0) - ori * new Vector3(0,0,0.25f);
-        GhstHandForearmMocap.transform.rotation = ori * Quaternion.Euler(90, 0, 0) * Quaternion.Euler(0, -90, 0);
+        // ("back" now follows the tilted direction, so the forearm sits below the hand for the top shelf and above it for the bottom shelf)
+        GhstHandForearmMocap.transform.position = pos + new Vector3(0, 0.15f, 0) - tilted * new Vector3(0, 0, 0.25f);
+        GhstHandForearmMocap.transform.rotation = tilted * Quaternion.Euler(90, 0, 0) * Quaternion.Euler(0, -90, 0);
 
         yield return null;
     }
@@ -999,7 +1023,7 @@ public class HIL_Manager : MonoBehaviour
     public void NewRandomTacTask(int numNew = 3)
     {
         // choose 1,2 or 3 from this:
-        int countDoas = UnityEngine.Random.Range(1, numNew+1);
+        int countDoas = UnityEngine.Random.Range(1, numNew + 1);
 
         List<DOA_mj> rdDoas = SelectRandomItems(new List<DOA_mj>(GhstHandController.DOA_mujoco), countDoas);
 
@@ -1008,7 +1032,7 @@ public class HIL_Manager : MonoBehaviour
         {
             // check if this doa should be changed continue OR set to zero
             // Skip DOAs that aren't part of the ones actually being tracked/compared this session
-            if(!currentStats.activeDiffDOAs.Keys.Contains(doa.General.doa)) continue;
+            if (!currentStats.activeDiffDOAs.Keys.Contains(doa.General.doa)) continue;
 
             // new random value in the doa range
             float value = UnityEngine.Random.Range(-1f, 1f);
@@ -1031,9 +1055,26 @@ public class HIL_Manager : MonoBehaviour
         // create and apply random TAC config
         NewRandomTacTask(numNew);
 
-        // teleport ghost hand to target
-        StartCoroutine(TransformGhstHandWForarmWeld(rdShelf.transform.position, rdShelf.transform.rotation));
+        // whole hand + forearm points up (top shelf), straight (middle) or down (bottom)
+        float pitch = LimbPosPitchForShelf(rdShelf);
 
+        // teleport ghost hand to target
+        StartCoroutine(TransformGhstHandWForarmWeld(rdShelf.transform.position, rdShelf.transform.rotation, pitch));
+
+    }
+
+    /// <summary>
+    /// LimbPos: tilt (degrees) of the whole ghost hand + forearm for a shelf, like a person reaching
+    /// into a cupboard: top shelf = hand points up, middle = straight, bottom = hand points down.
+    /// Shelf names are level_bot / level_mid / level_top.
+    /// </summary>
+    private float LimbPosPitchForShelf(GameObject shelf)
+    {
+        float pitch = LIMBPOS_PITCH_MID;
+        if (shelf.name.Contains("top")) pitch = LIMBPOS_PITCH_TOP;
+        else if (shelf.name.Contains("bot")) pitch = LIMBPOS_PITCH_BOT;
+        Debug.Log($"[LimbPos] shelf {shelf.name}: whole-hand tilt = {pitch:0} deg");
+        return pitch;
     }
 
     /// <summary>
@@ -1135,7 +1176,7 @@ public class HIL_Manager : MonoBehaviour
     /// line (as a fraction, can exceed 0..1) the projection falls. Optionally clips negative
     /// values (before the start) to 0. Currently unused directly (kept for reward-shaping experiments).
     /// </summary>
-    private float distance_projection(Vector3 start_pos, Vector3 current_pos, Vector3 goal_pos, bool clip_negative=false)
+    private float distance_projection(Vector3 start_pos, Vector3 current_pos, Vector3 goal_pos, bool clip_negative = false)
     {
         Vector3 sc = current_pos - start_pos;
         Vector3 d = goal_pos - start_pos;
@@ -1162,9 +1203,31 @@ public class HIL_Manager : MonoBehaviour
     /// <see cref="CheckSendPseudoLabelToLibEMG"/> in <see cref="Update"/> so that a terminal-state
     /// message gets sent while still "in" the phase that triggered it, rather than after already
     /// having moved to the next phase.
+    /// Also writes the Interact trial log (InteractTrialLogger): trial start, phase times, trial end.
     /// </summary>
     private void update_currentphase()
     {
+        // Interact trial logging (InteractTrialLogger)
+        if (currentEnv == HIL_env.Interact && next_currPhase != currentPhase)
+        {
+            if (next_currPhase == HIL_phases.None)
+            {
+                // trial ended (success or fail was set with SetResult in PerformInteractLoop)
+                InteractTrialLogger.EndTrial(currentStats.pathCompletionRatio, currentStats.orientationalDeviation, studyStarted);
+            }
+            else
+            {
+                if (currentPhase == HIL_phases.None && currentInteractTaskConfig != null)
+                {
+                    // new trial starts (None -> Reach)
+                    InteractTrialLogger.StartTrial(
+                        currentInteractTaskConfig.startShelf.name, currentInteractTaskConfig.startPose.ToString(),
+                        currentInteractTaskConfig.targetShelf.name, currentInteractTaskConfig.targetPose.ToString());
+                }
+                InteractTrialLogger.PhaseChanged(next_currPhase.ToString());
+            }
+        }
+
         // updates the current phase
         // set after sending feedback -> terminal state is sent
         // prior phase went from x -> none  => none did not send FB -> terminal state was only sent again when phase was grasp or other phase with FB
@@ -1193,10 +1256,11 @@ public class HIL_Manager : MonoBehaviour
         {
             foreach (var doa in currentStats.activeDiffDOAs)
             {
-                if(Math.Abs(doa.Value.diff) <= tolerance)
+                if (Math.Abs(doa.Value.diff) <= tolerance)
                 {
                     continue;
-                } else
+                }
+                else
                 {
                     return false;
                 }

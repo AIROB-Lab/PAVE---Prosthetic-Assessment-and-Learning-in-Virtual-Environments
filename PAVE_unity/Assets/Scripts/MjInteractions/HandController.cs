@@ -79,6 +79,11 @@ public class HandController : MonoBehaviour
     [SerializeField]
     public int DelayInSamples = 0;
 
+    // Timestamp of the newest UDP prediction at the moment current_value was last refreshed (in FixedUpdate).
+    // HIL_Manager compares it with lastReceivedUDPTS so a pseudo-label is only sent once the hand values
+    // belong to the newest prediction (prevents stale positions being sent with a new timestamp).
+    [NonSerialized] public double usedUdpTs = -1;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -97,6 +102,8 @@ public class HandController : MonoBehaviour
 
         Array.Copy(DOA_mujoco, _doa_mujoco, DOA_mujoco.Length);
 
+        // read the timestamp BEFORE the values, so the stored timestamp is never newer than the values used
+        usedUdpTs = StreamlinedInputManager.udpReceiver.lastReceivedUDPTS;
         DOA_mujoco = GetUdpValues(_doa_mujoco, DelayInSamples, DelayInSeconds);
 
         // Perform actuation
