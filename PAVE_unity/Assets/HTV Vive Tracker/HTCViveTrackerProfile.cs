@@ -134,7 +134,17 @@ namespace UnityEngine.XR.OpenXR.Features.Interactions
         public class XRTracker : TrackedDevice
         {
         }
- 
+
+        protected override string GetDeviceLayoutName()
+        {
+            return nameof(XRViveTracker);
+        }
+
+        protected override InteractionProfileType GetInteractionProfileType()
+        {
+            return InteractionProfileType.Device;
+        }
+
         /// <summary>
         /// An Input System device based off the <a href="https://www.khronos.org/registry/OpenXR/specs/1.0/html/xrspec.html#_htc_vive_controller_profile">HTC Vive Tracker</a>.
         /// </summary>
