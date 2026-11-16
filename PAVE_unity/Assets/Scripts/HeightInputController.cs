@@ -3,7 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 
-public class TierHeightController : MonoBehaviour
+public class HeightInputController : MonoBehaviour
 {
     public TMP_InputField topField;
     public TMP_InputField midField;
@@ -37,6 +37,21 @@ public class TierHeightController : MonoBehaviour
     }
 
     readonly List<Tier> tiers = new List<Tier>();
+
+    // the height each level should have, so other scripts can read it even while MuJoCo
+    // has temporarily written the old height back into the transform
+    static readonly Dictionary<Transform, float> heldY = new Dictionary<Transform, float>();
+    static bool heldUseWorld;
+
+    /// <summary>World position of a shelf level at the height chosen in the UI.</summary>
+    public static Vector3 HeldPosition(Transform level)
+    {
+        if (level == null) return Vector3.zero;
+        if (!heldY.TryGetValue(level, out float y)) return level.position;   // not controlled: use as is
+        if (heldUseWorld) { var p = level.position; p.y = y; return p; }
+        var lp = level.localPosition; lp.y = y;
+        return level.parent != null ? level.parent.TransformPoint(lp) : lp;
+    }
 
     void Start()
     {
@@ -136,6 +151,7 @@ public class TierHeightController : MonoBehaviour
     {
         foreach (var lvl in levels)
         {
+            heldY[lvl] = y; heldUseWorld = useWorldPosition;      // remember the chosen height
             if (useWorldPosition) { var p = lvl.position; p.y = y; lvl.position = p; }
             else { var p = lvl.localPosition; p.y = y; lvl.localPosition = p; }
         }

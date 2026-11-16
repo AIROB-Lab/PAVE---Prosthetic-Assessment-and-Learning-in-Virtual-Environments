@@ -250,6 +250,14 @@ public class HIL_Manager : MonoBehaviour
     [SerializeField] private float LIMBPOS_PITCH_TOP = 45f;    // top shelf: whole hand points 45 deg up
     [SerializeField] private float LIMBPOS_PITCH_MID = 0f;     // middle shelf: straight
     [SerializeField] private float LIMBPOS_PITCH_BOT = -45f;   // bottom shelf: whole hand points 45 deg down
+    [SerializeField] private float LIMBPOS_TOP_EXTRA_HEIGHT_M = 0.1f;   // top shelf only: ghost hand this much higher (m)
+
+
+    // Interact: after a failed trial, repeat the SAME task (same shelves and poses) up to this many attempts
+    // in total before a new random task is picked. 1 = old behaviour (new task after every trial).
+    [SerializeField] private int INTERACT_MAX_ATTEMPTS = 3;
+    private int interactAttempt = 0;           // attempt number of the current task (1 = first try)
+    private bool interactLastFailed = false;   // set at every fail, cleared at success
 
 
     private void Awake()
@@ -367,9 +375,19 @@ public class HIL_Manager : MonoBehaviour
         {
             case HIL_phases.None:
 
-                // Start new random task config
-                // Picks new random start/target shelves + box orientations and starts moving the ghost box/hand accordingly
-                this.NewRandomInteractTaskConf();
+                // After a failed trial: retry the same task until INTERACT_MAX_ATTEMPTS is reached
+                if (currentInteractTaskConfig != null && interactLastFailed && interactAttempt < INTERACT_MAX_ATTEMPTS)
+                {
+                    RetryInteractTask();
+                }
+                else
+                {
+                    // Start new random task config
+                    // Picks new random start/target shelves + box orientations and starts moving the ghost box/hand accordingly
+                    this.NewRandomInteractTaskConf();
+                    interactAttempt = 1;
+                }
+                interactLastFailed = false;
 
 
                 // move to next phase
@@ -422,6 +440,7 @@ public class HIL_Manager : MonoBehaviour
                 {
                     print("phase: Object is not connected to hand anymore in Grasp phase");
                     InteractTrialLogger.SetResult("fail_grasp");                       // trial log: grasp failed
+                    interactLastFailed = true;                                         // retry the same task
                     // Go to None
                     next_currPhase = HIL_phases.None;
                     // terminal state indicating failure
@@ -445,6 +464,7 @@ public class HIL_Manager : MonoBehaviour
                 {
                     print("phase: FAIL - Object is not connected to hand anymore in transport phase");
                     InteractTrialLogger.SetResult("fail_transport");                   // trial log: dropped during transport
+                    interactLastFailed = true;                                         // retry the same task
 
                     // Switch to phase none
                     next_currPhase = HIL_phases.None;
@@ -477,6 +497,7 @@ public class HIL_Manager : MonoBehaviour
                             // Successfull task completion
                             this.terminal_state = 1;
                             InteractTrialLogger.SetResult("success");                  // trial log: success
+                            interactLastFailed = false;                                // next trial = new task
                             break;
                         }
                     }
@@ -489,6 +510,7 @@ public class HIL_Manager : MonoBehaviour
                     // terminal state indicating failure
                     this.terminal_state = 2;
                     InteractTrialLogger.SetResult("fail_release");                     // trial log: released but not placed correctly
+                    interactLastFailed = true;                                         // retry the same task
                     break;
                 }
 
@@ -991,6 +1013,20 @@ public class HIL_Manager : MonoBehaviour
     /// and kicks off the coroutines that move the ghost preview to the target and teleport the real
     /// transfer box to the start.
     /// </summary>
+    /// <summary>
+    /// Interact: repeat the current task after a failed trial. Keeps the same start/target shelves,
+    /// poses and yaw rotations, puts the real box back on the start shelf and the ghost back at the target.
+    /// </summary>
+    private void RetryInteractTask()
+    {
+        interactAttempt++;
+        currentInteractTaskConfig.tbTouched = false;
+        Debug.Log($"[Interact] retrying same task, attempt {interactAttempt}/{INTERACT_MAX_ATTEMPTS}");
+
+        StartCoroutine(TransformGhostHdToTarget());
+        StartCoroutine(TransformTbToStart());
+    }
+
     public void NewRandomInteractTaskConf()
     {
         List<GameObject> excludedShelfs = new List<GameObject>();
@@ -1058,9 +1094,16 @@ public class HIL_Manager : MonoBehaviour
         // whole hand + forearm points up (top shelf), straight (middle) or down (bottom)
         float pitch = LimbPosPitchForShelf(rdShelf);
 
-        // teleport ghost hand to target
-        StartCoroutine(TransformGhstHandWForarmWeld(rdShelf.transform.position, rdShelf.transform.rotation, pitch));
+        // shelf position at the height chosen in the UI
+        Vector3 shelfPos = HeightInputController.HeldPosition(rdShelf.transform);
 
+        // top shelf only: place the ghost hand a bit higher
+        if (rdShelf.name.Contains("top")) shelfPos.y += LIMBPOS_TOP_EXTRA_HEIGHT_M;
+
+        Debug.Log($"[LimbPos] {rdShelf.name}: ghost placed at y = {shelfPos.y:0.000} (extra top = {LIMBPOS_TOP_EXTRA_HEIGHT_M})");
+
+        // teleport ghost hand to target
+        StartCoroutine(TransformGhstHandWForarmWeld(shelfPos, rdShelf.transform.rotation, pitch));
     }
 
     /// <summary>
