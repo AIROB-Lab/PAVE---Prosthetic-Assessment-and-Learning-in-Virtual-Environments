@@ -87,8 +87,8 @@ Individual scenes may implement only a subset of these features.
 
 The project currently targets:
 
-- **Unity 2022.3.42f1 LTS**
-- **[MuJoCo for Unity 3.3.3](https://mujoco.readthedocs.io/en/3.3.3/unity.html)** — the checked-in manifest points to a local MuJoCo `3.3.3` Unity package
+- **Unity 6000.3.29f1 LTS (Unity 6)**
+- **MuJoCo for Unity 3.2.0** — embedded package and matching Windows native library; see [dependencies](Docs/DEPENDENCIES.md)
 - **[`mj-unity-extensions`](https://github.com/Balint-H/modular-agents/tree/main/mj-unity-extensions)** — used for additional MuJoCo/Unity functionality
 - a Windows PC suitable for Unity VR development
 - a compatible OpenXR headset and tracking setup for immersive scenes
@@ -107,16 +107,19 @@ cd PAVE---Prosthetic-Assessment-and-Learning-in-Virtual-Environments
 
 ### 2. Install the required Unity version
 
-Install Unity `2022.3.42f1` through Unity Hub. Add the Windows build support module if you intend to create a standalone Windows build.
+Install Unity `6000.3.29f1` through Unity Hub. Add the Windows build support module if you intend to create a standalone Windows build.
 
-### 3. Resolve the local Unity packages
+### 3. Initialize the separately maintained SIM dependency
 
-The current [`PAVE_unity/Packages/manifest.json`](PAVE_unity/Packages/manifest.json) contains machine-specific `file:` references for:
+Clone recursively or run:
 
-- [`org.mujoco`](https://mujoco.readthedocs.io/en/3.3.3/unity.html)
-- [`com.github.mj-unity-extensions`](https://github.com/Balint-H/modular-agents/tree/main/mj-unity-extensions)
+```bash
+git submodule update --init --recursive
+```
 
-Install or obtain those packages locally, then replace the two absolute paths in `manifest.json` with paths valid on your machine. Unity cannot import the project cleanly until both references resolve.
+MuJoCo and mj-unity-extensions are embedded and pinned by this repository. SIM is a separate pinned repository under `Dependencies/SIM`; its modular runtime is referenced through a relative package path. No personal drive paths need editing. See [dependency provenance and setup](Docs/DEPENDENCIES.md) and the [shared-runtime guide](Docs/ARCHITECTURE.md).
+
+Student HIL/UIL/kitchen content is integrated on the development line. The `StreamlinedInputManager_LR`, `HandController_LR`, `LoggingManager_LR` and `FollowTracker_LR` components preserve existing scene references while sharing implementations. No new assessment scenes are added by this refactoring.
 
 ## Research background
 

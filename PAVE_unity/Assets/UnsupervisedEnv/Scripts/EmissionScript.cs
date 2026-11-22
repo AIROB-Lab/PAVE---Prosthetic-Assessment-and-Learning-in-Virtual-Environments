@@ -29,11 +29,11 @@ public class EmissionScript : MonoBehaviour
         StudyEvent
     }
 
-    // Select in inspector 
+    // Select in inspector
     [Header("UDP")]
     public byte UDPCategory = 0; // Set UDP category("0.1" ARVs)
     public byte UDPSubCategory = 1;
-    
+
 
     [Header("Game Objects")]
     [SerializeField] private GameObject parentLight; // light bulb parent
@@ -52,10 +52,10 @@ public class EmissionScript : MonoBehaviour
     [SerializeField] private double activationThreshold = 0.3d; // ARV value to describe activity (myo 0.3, muovi 5)
     [SerializeField] private int numberOfRounds = 1; // # how often light bulbs activate again (# of explosion rounds)
     [SerializeField] private float timeThreshold = 3f; // time, when light bulb activates again
-    
 
 
-   
+
+
 
     // Create array of children later
     private GameObject[] child;
@@ -76,7 +76,7 @@ public class EmissionScript : MonoBehaviour
     [SerializeField] private float maxHue = 0.06f;
     [SerializeField] private float maxIntensity = 5.0f;
     [SerializeField] [Range(0, 10)] private float changeSteps = 4; // number of steps to calculate change speeds
-    private float colorChangeSpeed; // how fast color should change 
+    private float colorChangeSpeed; // how fast color should change
     private float intensityChangeSpeed; // how fast intensity increases
 
     // counting variables
@@ -86,10 +86,10 @@ public class EmissionScript : MonoBehaviour
     private bool finalLog = false;
 
 
-    private List<StreamlinedInputManager_LR.UdpObject> arvValues = null;
+    private List<Sim.SimPacket> arvValues = null;
     private double[] emgValuesGrouped;
 
-    // event log 
+    // event log
     private string eventHeader = "time_stamp_s" + "," + "participant" +  "," + "event" + "," + "name" + "," + "light_bulb_number" + "," + "round" + Environment.NewLine;
     private string valueHeader = "time_stamp_s" + "," + "participant" + "," + "values" + Environment.NewLine;
 
@@ -103,7 +103,7 @@ public class EmissionScript : MonoBehaviour
         hasReachedThreshold = new bool[childLights.Length];
         activationRound = new int[childLights.Length];
 
-        
+
 
 
         for (int i = 0; i < emissiveMaterial.Length; i++)
@@ -126,7 +126,7 @@ public class EmissionScript : MonoBehaviour
 
     }
 
-    // Update is called depending on framerate 
+    // Update is called depending on framerate
     void Update()
     {
         // set the right change speeds
@@ -146,7 +146,7 @@ public class EmissionScript : MonoBehaviour
             }
             if (arvValues == null)
             {
-                arvValues = StreamlinedInputManager_LR.udpReceiver.getUdpObjects(UDPCategory, UDPSubCategory, true); //empty buffer 
+                arvValues = StreamlinedInputManager_LR.udpReceiver.getUdpObjects(UDPCategory, UDPSubCategory, true); //empty buffer
             }
         }
 
@@ -176,15 +176,15 @@ public class EmissionScript : MonoBehaviour
     }
 
 
-    public void changeLight(List<StreamlinedInputManager_LR.UdpObject> arvValues)
+    public void changeLight(List<Sim.SimPacket> arvValues)
     {
         foreach (var obj in arvValues) // use all data between "update calls", independent from framerate/sampling rate
         {
             if (n_features == emgValuesGrouped.Length) // case 8
             {
-                for (int i = 0; i < obj.Data.Length; i++)
+                for (int i = 0; i < obj.Values.Length; i++)
                 {
-                    double currentVal = (double)obj.Data[i]; //ARV value from SIM
+                    double currentVal = Convert.ToDouble(obj.Values[i]); //ARV value from SIM
 
                     if (currentVal > activationThreshold && i < 8) // active!, increase intensity of the light bulbs
                     {
@@ -284,10 +284,10 @@ public class EmissionScript : MonoBehaviour
                     double sum = 0.0;
                     for (int j = 0; j < groupFactor; j++)
                     {
-                        sum += (double)obj.Data[i * groupFactor + j];
+                        sum += Convert.ToDouble(obj.Values[i * groupFactor + j]);
                     }
                     emgValuesGrouped[i] = sum / groupFactor; // mean of values from original array in grouped order (0+1, 2+3, 4+5,..., 14+15)
-                                                             //emgValuesGrouped[i] = ((double)obj.Data[i * 2] + (double)obj.Data[i * 2 + 1]) / 2.0; // mean of 2 arv values in one entry
+                                                             //emgValuesGrouped[i] = (Convert.ToDouble(obj.Values[i * 2]) + Convert.ToDouble(obj.Values[i * 2 + 1])) / 2.0; // mean of 2 arv values in one entry
 
                     if (emgValuesGrouped[i] > activationThreshold) // active!, increase intensity of the light bulbs
                     {
@@ -378,7 +378,7 @@ public class EmissionScript : MonoBehaviour
                 }
 
 
-            
+
 
 
 
@@ -458,9 +458,9 @@ public class EmissionScript : MonoBehaviour
 
 
                     // myo version:
-                    //for (int i = 0; i < obj.Data.Length; i++)
+                    //for (int i = 0; i < obj.Values.Length; i++)
                     //{
-                    //    double currentVal = (double)obj.Data[i]; //ARV value from SIM
+                    //    double currentVal = Convert.ToDouble(obj.Values[i]); //ARV value from SIM
 
                     //    if (currentVal > currentValTreshold && i < 8) // active, increase intesity for first 8 channels
                     //    {
@@ -528,10 +528,10 @@ public class EmissionScript : MonoBehaviour
                     //    }
                     //}
 
-                
+
             }
-            // log rms values 
-            AddToValueBuffer("Stage1RMS", StreamlinedInputManager_LR.Now, string.Join(",", obj.Data));
+            // log rms values
+            AddToValueBuffer("Stage1RMS", StreamlinedInputManager_LR.Now, string.Join(",", obj.Values));
             // log emg values for 8 channels
             AddToValueBuffer("Stage1EMGgrouped", StreamlinedInputManager_LR.Now, string.Join(",", emgValuesGrouped));
             // log hueValues and intensityValues
@@ -595,20 +595,20 @@ public class EmissionScript : MonoBehaviour
         {
             goBtn.GetComponent<Image>().color = Color.red;
         }
-       
+
         running = true;
 
         //log start
         AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"StartBtn", $"-1", $"-1");
-    }   
-    
+    }
+
     public void StopTraining() // = End of Training
     {
         running = false;
         //log stop
         AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"StopBtn", $"-1", $"-1");
 
-        arvValues = null; // to allow no color increasing 
+        arvValues = null; // to allow no color increasing
 
         for(int i = 0; i < childLights.Length; i++) // reset everything
         {
@@ -620,7 +620,7 @@ public class EmissionScript : MonoBehaviour
             emissiveMaterial[i].SetColor("_EmissionColor", color[i] * intensityValue[i]); // update material
             spotLights[i].GetComponent<MeshRenderer>().material.DisableKeyword("_EMISSION");
         }
-        
+
 
         // change button color back
         GameObject goBtn = GameObject.Find("StartTraining");
@@ -629,7 +629,7 @@ public class EmissionScript : MonoBehaviour
             goBtn.GetComponent<Image>().color = new Color(r: 0.6536134f, g: 0.9056604f, b: 0.6730896f);
         }
 
-        
+
     }
 
     public void PauseTraining()
@@ -657,15 +657,15 @@ public class EmissionScript : MonoBehaviour
             GameObject goBtn = GameObject.Find("PauseTraining");
             if (goBtn != null)
             {
-                goBtn.GetComponent<Image>().color = new Color(r: 1f, g: 0.9813771f , b: 0.7911051f); 
+                goBtn.GetComponent<Image>().color = new Color(r: 1f, g: 0.9813771f , b: 0.7911051f);
             }
             //log pause
             AddToEventBuffer(StreamlinedInputManager_LR.Now, Events.StudyEvent, $"PauseBtn:start", $"-1", $"-1");
-           
-            
+
+
         }
 
-        
+
 
     }
     public void StartAgain()

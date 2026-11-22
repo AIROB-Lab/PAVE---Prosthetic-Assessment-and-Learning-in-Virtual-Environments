@@ -31,6 +31,8 @@ using static HIL_Manager.Stats;
 /// </summary>
 public class HIL_Manager : MonoBehaviour
 {
+    // Trial output owns a separate legacy CSV writer; close it on every scene exit.
+    void OnDisable() { InteractTrialLogger.Close(); }
     [Serializable]
     /// <summary>
     /// Definition similar to PastaBoxManager.cs

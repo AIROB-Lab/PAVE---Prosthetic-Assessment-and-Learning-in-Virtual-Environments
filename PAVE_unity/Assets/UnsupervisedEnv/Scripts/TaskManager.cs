@@ -7,17 +7,17 @@ using TMPro;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System;
-using Mujoco.Extensions;
+// MjState is provided by the pinned Mujoco extension package.
 
 public enum TaskState
 {
     NotStarted,     // Training not started
-    Started,        // Training started over UI button 
+    Started,        // Training started over UI button
     Running,        // Task is shown, Training runs
     Successful,     // Task completed succsessfully
     TimeOver,       // Timer ended
     Skip            // Pressed Next Task UI btn
-}      
+}
 
 
 public class TaskManager : MonoBehaviour
@@ -81,7 +81,7 @@ public class TaskManager : MonoBehaviour
         timeToComplete = taskTime;
         currentTaskIndex = 0;
         currentRound = 0;
-        
+
         // Logging
         LoggingManager.CreateNewLog("Stage2StudyEvent", eventHeader, 5f);
         LoggingManager.CreateNewLog("Stage2TaskOrder", eventHeader, 5f);
@@ -110,7 +110,7 @@ public class TaskManager : MonoBehaviour
         }
         else if (taskState == TaskState.Running) // countdown TaskTime while running
         {
-           
+
 
             timeToComplete -= Time.deltaTime;
 
@@ -136,7 +136,7 @@ public class TaskManager : MonoBehaviour
         }
 
     }
-    
+
 
     // randomize/shuffle tasks by Fisher-Yates algorithm
     private GameObject[] ShuffleTasks(GameObject[] originalTasks)
@@ -189,7 +189,7 @@ public class TaskManager : MonoBehaviour
                     MjState.TeleportMjRoot(currentFreejoint[0], foreground.transform.position + new Vector3(-0.15f,0,0), foreground.transform.rotation);
                     MjState.TeleportMjRoot(currentFreejoint[1], foreground.transform.position + new Vector3(0.15f, 0, 0), foreground.transform.rotation);
 
-                    
+
 
                 }
                 else if(shuffledTasks[currentTaskIndex].name == "Ball Task")
@@ -205,7 +205,7 @@ public class TaskManager : MonoBehaviour
                         MjState.TeleportMjRoot(currentFreejoint[i], foreground.transform.position, foreground.transform.rotation);
                     }
                 }
-                
+
 
 
             }
@@ -224,11 +224,11 @@ public class TaskManager : MonoBehaviour
 
             }
 
-           
-            timeToComplete = taskTime; // reset task countdown  
+
+            timeToComplete = taskTime; // reset task countdown
 
         }
-        
+
 
     }
 
@@ -319,7 +319,7 @@ public class TaskManager : MonoBehaviour
 
 
 
-            currentTaskIndex++; //switch to next task 
+            currentTaskIndex++; //switch to next task
 
             // NEXT ROUND ?
             if (currentTaskIndex < shuffledTasks.Length)
@@ -393,7 +393,7 @@ public class TaskManager : MonoBehaviour
     }
 
 
- 
+
 
     public void AddToEventBuffer(double now, Events ev, string name, string task, string number, string round)
     {
@@ -491,10 +491,10 @@ public class TaskManager : MonoBehaviour
 
     public void StopTraining()
     {
-        // End of Training = move task back & reset everything 
+        // End of Training = move task back & reset everything
         taskState = TaskState.NotStarted;
 
-        //log manual stop 
+        //log manual stop
         AddToEventBuffer(StreamlinedInputManager.Now, Events.StudyEvent, $"StopBtn", $"{shuffledTasks[currentTaskIndex].name}", $"{currentTaskIndex}", $"{currentRound}");
 
         // MOVE TO BACKGROUND
@@ -539,7 +539,7 @@ public class TaskManager : MonoBehaviour
             goBtn.GetComponent<Image>().color = new Color(r: 0.6536134f, g: 0.9056604f, b: 0.6730896f);
         }
 
-        
+
     }
 
 

@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Mujoco;
-using Mujoco.Extensions;
+// MjState is provided by the pinned Mujoco extension package.
 
 public class CatchAndCollect : MonoBehaviour
 {
@@ -19,7 +19,7 @@ public class CatchAndCollect : MonoBehaviour
     private Vector3 posBowlInHand;
     private bool placed = false;
     private MjFreeJoint bowlFreejoint;
-    
+
 
     private int currentIndex = 0;
     private float timer = 0;
@@ -30,7 +30,7 @@ public class CatchAndCollect : MonoBehaviour
 
     private void Awake()
     {
-       
+
     }
 
     // Start is called before the first frame update
@@ -42,13 +42,13 @@ public class CatchAndCollect : MonoBehaviour
 
         //if (bowl != null)
         //{
-           
+
         //    bowlFreejoint = bowl.GetComponentInChildren<MjFreeJoint>();
         //    if (bowlFreejoint != null)
         //    {
         //        MjState.TeleportMjRoot(bowlFreejoint, new Vector3(100, 0, 100), new Quaternion(0, 0, 0, 0)); // teleport bowl outside
         //    }
-        //    //bowl.transform.localPosition = new Vector3(100, -0.2f, 100); //MPL hand 
+        //    //bowl.transform.localPosition = new Vector3(100, -0.2f, 100); //MPL hand
         //}
     }
 
@@ -150,8 +150,8 @@ public class CatchAndCollect : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
-       
+
+
 
 
     }
@@ -165,7 +165,7 @@ public class CatchAndCollect : MonoBehaviour
             if (missionList[i] == true)
             {
                 x++;
-                
+
             }
         }
 
@@ -173,7 +173,7 @@ public class CatchAndCollect : MonoBehaviour
             return true;
         else
             return false;
-        
+
     }
 
 

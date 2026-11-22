@@ -6,9 +6,12 @@ using UnityEngine;
 /// <summary>
 /// This is a class specifically for objects including mujoco weld objects
 /// </summary>
+/// <summary>Shared calibrated tracking-to-mocap follower. Offsets are meters and degrees.</summary>
 public class FollowTracker : MonoBehaviour
 {
     public GameObject leadingObject;
+    public GameObject weldGeometry;
+    public GameObject counterMujoco;
 
     public float lerpPos;
     public float lerpQuat;
@@ -26,16 +29,16 @@ public class FollowTracker : MonoBehaviour
     private bool trackingStarted = false;
 
     // Start is called before the first frame update
-    void Start()
+    protected virtual void Start()
     {
         // let some time pass for initialization
         Invoke("StartTracking", 3);
     }
 
-    private void Update()
+    protected virtual void FixedUpdate()
     {
         // only start tracking after a set amount of time
-        if (!trackingStarted) return;
+        if (!trackingStarted || leadingObject == null) { HandFollowValid = false; return; }
 
         Vector3 targetPos = new();
         Quaternion targetRot = new();
@@ -53,7 +56,7 @@ public class FollowTracker : MonoBehaviour
         // adjust rotation
         targetRot = leadingObject.transform.rotation * Quaternion.Euler(offsetEuler);
 
-        if (faceCamera)
+        if (faceCamera && Camera.main != null)
         {
             Vector3 direction = Camera.main.transform.position - leadingObject.transform.position;
             direction.y = 0; // Optional: lock rotation to Y axis only
@@ -80,6 +83,13 @@ public class FollowTracker : MonoBehaviour
 
     }
 
+    /// <summary>Legacy opt-in realignment, retained for serialized button callbacks.</summary>
+    public void RealignMj()
+    {
+        if (weldGeometry == null || counterMujoco == null) return;
+        Vector3 error = transform.position - weldGeometry.transform.position;
+        if (error.magnitude >= 0.2f) counterMujoco.transform.position += error;
+    }
     private void StartTracking()
     {
         trackingStarted = true;

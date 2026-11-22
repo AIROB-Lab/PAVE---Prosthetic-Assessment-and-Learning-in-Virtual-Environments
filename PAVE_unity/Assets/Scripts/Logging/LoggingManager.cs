@@ -1,171 +1,91 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using UnityEngine;
 
-
-
+/// <summary>Shared session recorder. Producers are synchronized; flush and shutdown are ordered.</summary>
 public class LoggingManager : MonoBehaviour
 {
-    partial class LogSingle
+    sealed class LogStream
     {
-        private string fileName;
-        private string header;
-        private string buffer = "";
-        private float logInterval; // log rate in seconds // Currently not used
-
-        // need an object for a couple of functions
-
-        public LogSingle(string fileName, string header, float logInterval = 5f)
-        {
-            this.fileName = fileName;
-            this.header = header;
-            this.logInterval = logInterval;
-
-            // create file & add header
-            LoggingManager.CreateLogFile(fileName, header);
-        }
-
-        internal void AddToBuffer(string buffer)
-        {
-            this.buffer += buffer;
-        }
-
-        internal string GetResetBuffer()
-        {
-            string _buffer = this.buffer;
-            this.buffer = "";
-            return _buffer;
-        }
-
-        internal string GetFileName()
-        {
-            return this.fileName;
-        }
-
+        internal readonly StreamWriter Writer;
+        internal readonly StringBuilder Pending = new StringBuilder();
+        internal LogStream(string path, string header)
+        { Writer = new StreamWriter(path, false, new UTF8Encoding(false)); Writer.Write(header); Writer.Flush(); }
     }
-
-    // files and directories
-    private static DirectoryInfo LogDirectory = null;
-    private static string dateTime;
-    private static Dictionary<string, LogSingle> LogsDict = new Dictionary<string, LogSingle>();
-
-    public float loggingInterval;
-    
-
-    private void Awake()
+    static readonly object gate = new object();
+    static readonly Dictionary<string, LogStream> streams = new Dictionary<string, LogStream>();
+    static LoggingManager owner;
+    static volatile bool recording;
+    public static int RecordsAfterClose { get; private set; }
+    public static string OutputDirectory { get; private set; }
+    [Min(0.1f)] public float loggingInterval = 1;
+    [Tooltip("Empty uses persistentDataPath/PAVE/data. Relative paths resolve below persistentDataPath.")]
+    public string outputFolder = "";
+    float nextFlush;
+    protected virtual void Awake()
     {
-        //create folder and filepaths from datetime
-        string dateTimeFormat = "yyyyMMd_HHmmss";
-        dateTime = DateTime.Now.ToString(dateTimeFormat);
-        LogDirectory = CreateDir(dateTime);
+        if (owner != null && owner != this)
+        { Debug.LogWarning("Using the existing session logger.", this); enabled = false; return; }
+        owner = this;
+        string root = string.IsNullOrWhiteSpace(outputFolder) ? Path.Combine(Application.persistentDataPath, "PAVE", "data")
+            : Path.IsPathRooted(outputFolder) ? outputFolder : Path.Combine(Application.persistentDataPath, outputFolder);
+        OutputDirectory = Path.Combine(root, DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff") + "_" + Guid.NewGuid().ToString("N").Substring(0,8));
+        Directory.CreateDirectory(OutputDirectory);
+        recording = true;
+        RecordsAfterClose = 0;
+        File.WriteAllText(Path.Combine(OutputDirectory, "session.txt"), "Unity=" + Application.unityVersion + "\nScene=" + UnityEngine.SceneManagement.SceneManager.GetActiveScene().path + "\n");
+        Debug.Log("PAVE session data: " + OutputDirectory);
     }
-
-    private void Start()
+    protected virtual void OnEnable() { if (owner == null) Awake(); }
+    protected virtual void Update()
     {
-        // Start logging coroutine
-        StartCoroutine(LogAllCoroutine(loggingInterval));
+        if (owner != this || Time.unscaledTime < nextFlush) return;
+        Flush(); nextFlush = Time.unscaledTime + Mathf.Max(0.1f, loggingInterval);
     }
-
-    private void OnApplicationQuit()
-    {
-        // log a final time on application quit
-        LogAll();
-    }
-
-    // creation of the measurement directory
-    // called within Start()
-    public DirectoryInfo CreateDir(string date_time)
-    {
-        string currentDirPath = Directory.GetCurrentDirectory() + "//" + "data" + "//";
-        string newDirPath = currentDirPath + date_time;
-        return Directory.CreateDirectory(newDirPath);
-    }
-
-    /// <summary>
-    /// Creates new Log which is automatically managed
-    /// </summary>
-    /// <param name="fileName"></param>
-    /// <param name="header"></param>
-    /// <param name="logRate">NOT IMPLEMENTED YET; IT WILL USE LOGGINGMANAGER LOG RATE INSTEAD</param>
     public static void CreateNewLog(string fileName, string header, float logRate = 5f)
     {
-        LogsDict.Add(fileName, new LogSingle(fileName, header, logRate));
-    }
-
-
-    public static void addTracker(string tracker)
-    {
-        string trackerHeader = "," +
-                    tracker + "_position_x" + "," +
-                    tracker + "_position_y" + "," +
-                    tracker + "_position_z" + "," +
-                    tracker + "_rotation_w" + "," +
-                    tracker + "_rotation_x" + "," +
-                    tracker + "_rotation_y" + "," +
-                    tracker + "_rotation_z" + Environment.NewLine;
-
-        CreateNewLog(tracker, trackerHeader, 5f);
-    }
-
-
-    /// <summary>
-    /// Adds new logfile to same folder as existing log files for this run
-    /// </summary>
-    /// <param name="fileName"></param>
-    /// <param name="header"></param>
-    private static void CreateLogFile(string fileName, string header)
-    {
-        string logPath = LogDirectory.FullName + "/" + dateTime + "_" + fileName + ".csv";
-        File.AppendAllText(logPath, header);
-    }
-
-    /// <summary>
-    /// Function to log buffer in project folder 
-    /// </summary>
-    /// <param name="fileName">file name</param>
-    /// <param name="buffer">copy of current buffer</param>
-    /// <param name="async">indicate of operation should be performed synchronous or asynchronous</param>
-    private static async void Log(string fileName, string buffer, bool asyncWrite = false)
-    {
-        if (asyncWrite)
+        lock (gate)
         {
-            await File.AppendAllTextAsync(LogDirectory.FullName + "/" + dateTime + "_" + fileName + ".csv", buffer);
-        }
-        else
-        {
-            File.AppendAllText(LogDirectory.FullName + "/" + dateTime + "_" + fileName + ".csv", buffer);
+            if (streams.ContainsKey(fileName)) return;
+            if (OutputDirectory == null) throw new InvalidOperationException("Add a LoggingManager before registering logs.");
+            string safeName = fileName;
+            foreach (char c in Path.GetInvalidFileNameChars()) safeName = safeName.Replace(c, '_');
+            streams.Add(fileName, new LogStream(Path.Combine(OutputDirectory, safeName + ".csv"), header));
         }
     }
-
-    private static IEnumerator LogAllCoroutine(float interval)
-    {
-        while (true)
-        {
-            LogAll();
-            // wait for interval
-            yield return new WaitForSeconds(interval);
-            print("all logged");
-        }
-    }
-
-    private static void LogAll()
-    {
-        foreach (var entry in LogsDict)
-        {
-            string _buffer = entry.Value.GetResetBuffer();
-            LoggingManager.Log(fileName: entry.Value.GetFileName(), buffer: _buffer, asyncWrite: true);
-        }
-    }
-
     public static void AddToBuffer(string fileName, string buffer)
     {
-        if (!LogsDict.ContainsKey(fileName)) throw new Exception("Given Log filename" + fileName + "was not present in dictionary");
-        else
+        lock (gate)
         {
-            LogsDict[fileName].AddToBuffer(buffer);
+            // Native callbacks may finish after the session is closed. Do not reopen files.
+            if (!recording) { RecordsAfterClose++; return; }
+            if (!streams.TryGetValue(fileName, out var stream)) throw new InvalidOperationException("Unregistered log: " + fileName);
+            stream.Pending.Append(buffer);
         }
     }
-
+    public static void Flush()
+    {
+        lock (gate)
+            foreach (var stream in streams.Values)
+            { stream.Writer.Write(stream.Pending.ToString()); stream.Writer.Flush(); stream.Pending.Clear(); }
+    }
+    public static void addTracker(string tracker)
+        => CreateNewLog(tracker, "time_stamp_s,position_x_m,position_y_m,position_z_m,rotation_w,rotation_x,rotation_y,rotation_z\n");
+    protected virtual void OnDisable() { if (owner == this) Close(); }
+    protected virtual void OnApplicationQuit() { if (owner == this) Close(); }
+    void Close()
+    {
+        lock (gate)
+        {
+            recording = false;
+            try { Flush(); }
+            finally
+            {
+                foreach (var stream in streams.Values) stream.Writer.Dispose();
+                streams.Clear(); OutputDirectory = null; owner = null;
+            }
+        }
+    }
 }

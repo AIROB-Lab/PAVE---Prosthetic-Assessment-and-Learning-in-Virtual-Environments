@@ -11,7 +11,7 @@ using UnityEngine;
 public static class InteractTrialLogger
 {
     // Folder for the CSV files. Change if your HIL_IL_py folder is somewhere else.
-    public static string Folder = @"C:\Users\fu32gesi\Development\HIL_IL_py\data\interact_logs";
+    public static string Folder = ""; // Empty uses the active session directory.
 
     static StreamWriter writer;
     static int trial;
@@ -28,8 +28,10 @@ public static class InteractTrialLogger
     static void EnsureOpen()
     {
         if (writer != null) return;
-        Directory.CreateDirectory(Folder);
-        string path = Path.Combine(Folder, $"interact_trials_{(long)Now()}.csv");
+        string folder = string.IsNullOrWhiteSpace(Folder) ? LoggingManager.OutputDirectory : Folder;
+        if (string.IsNullOrWhiteSpace(folder)) throw new InvalidOperationException("A session logger is required.");
+        Directory.CreateDirectory(folder);
+        string path = Path.Combine(folder, $"interact_trials_{(long)Now()}.csv");
         writer = new StreamWriter(path, false);
         writer.WriteLine("trial,start_unix,end_unix,duration_s,result,reach_s,grasp_s,transport_s,release_s," +
                          "start_shelf,start_pose,target_shelf,target_pose,final_pcr,final_orient_dev,study_started");
