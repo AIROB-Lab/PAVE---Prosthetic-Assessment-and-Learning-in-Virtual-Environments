@@ -1,17 +1,18 @@
 using TMPro;
 using UnityEngine;
 
+/// <summary>Displays the study-specific gaze regions evaluated by the acquisition adapter.</summary>
+[RequireComponent(typeof(TextMeshProUGUI))]
 public class ROITextUpdate : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
+    TextMeshProUGUI label;
+    void Awake()
     {
-        
+        label = GetComponent<TextMeshProUGUI>();
     }
 
-    // Update is called once per frame
     void Update()
     {
-        this.GetComponent<TextMeshProUGUI>().text = $"ROI: Hand - {StreamlinedInputManager.lookingAtHand}, Object - {StreamlinedInputManager.lookingAtObject}, Target - {StreamlinedInputManager.lookingAtTarget}";
+        label.text = $"ROI: Hand - {PaveTracking.LookingAtHand}, Object - {PaveTracking.LookingAtObject}, Target - {PaveTracking.LookingAtTarget}";
     }
 }

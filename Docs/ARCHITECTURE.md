@@ -33,7 +33,7 @@ The LR-named wrappers remain to preserve serialized component identities. They c
 1. Reuse a hand rig and its HandController component. Keep binding enum values stable; serialized scenes depend on them.
 2. Assign each DOA's MuJoCo actuator objects, SIM subcategory and input/output ranges. Positive/negative normalized values map to the corresponding actuator control range. Nonfinite inputs and zero-width mappings are invalid.
 3. If a legacy axis is kinematic, configure DOA_mocap with the attachment, local axis and degree limits. This is not a force-driven joint and must be identified as such in a study.
-4. For a desktop check, add ManualHandCommandSource to the runtime hand and assign commandSource. The axes being driven must have EMG_override enabled; ghost targets that deliberately override commands remain task-owned.
+4. For a desktop check, add ManualHandCommandSource to the runtime hand and assign CommandSource. The axes being driven must have EMG_override enabled; ghost targets that deliberately override commands remain task-owned.
 5. Assign HandJointState to physical hinges when measured joint quantities are needed. Do not label command fields as physical measurements.
 
 CommandTimeoutSeconds is receipt-age based. Stale or unavailable input holds the preceding command and sets InputIsFresh false. The sample delay is zero-based: one sample back really selects the preceding packet. Time-based delays return no result when the required history is unavailable. Delay selection replaces the previous mode. The legacy active field remains study metadata; SetAxisRestricted is the explicit actuation restriction.

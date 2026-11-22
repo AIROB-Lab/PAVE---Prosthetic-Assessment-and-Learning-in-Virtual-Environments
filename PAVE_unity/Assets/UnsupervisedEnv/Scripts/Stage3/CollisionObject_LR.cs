@@ -9,7 +9,6 @@ using UnityEngine.Events;
 
 public class CollisionObject_LR : MonoBehaviour
 {
-
     // delegate for level 2 - grabbed Objects
     public delegate void ObjectGrabbedEvent(GameObject obj);
     public static event ObjectGrabbedEvent OnObjectGrabbed;
@@ -17,17 +16,13 @@ public class CollisionObject_LR : MonoBehaviour
     public AudioSource failureSound;
     public GameObject outsidePosition = null; //outside position
     private bool isInsideHand = false; // to detect object grabbing and release
-
-
-
     private void OnTriggerEnter(Collider other)
     {
-        if(LevelManager.level == Levels.CollectIngredients)
+        if (LevelManager.level == Levels.CollectIngredients)
         {
             if (other.CompareTag("hand_collider"))
             {
                 isInsideHand = true;
-
             }
 
             if (other.gameObject.name != "XR Origin" && other.tag == "CollectionArea")
@@ -40,15 +35,18 @@ public class CollisionObject_LR : MonoBehaviour
                     //log collision
                     AddToEventBuffer(StreamlinedInputManager.Now, "CollisionEvent", $"{this.gameObject.name}-{other.gameObject.name}", $"{(int)LevelManager.level}", $"{LevelManager.level}");
                 }
-
             }
+
             if (other.gameObject.name == "floor")
             {
                 if (!LevelManager.fallenObjects.Contains(gameObject.name) && !LevelManager.collectedObjects.Contains(gameObject)) // exclude that the list already contains this gameObject
                 {
                     LevelManager.fallenObjects.Add(this.gameObject.name); // add fallen object to list
-                    if(failureSound != null)
+                    if (failureSound != null)
+                    {
                         PlaySound(failureSound);
+                    }
+
                     //teleport outside when fallen
                     switch (gameObject.name)
                     {
@@ -60,7 +58,7 @@ public class CollisionObject_LR : MonoBehaviour
                             break;
                         case "flour_collider":
                             StartCoroutine(TeleportToCorrectPosition(LevelManager.flourBox, LevelManager.flourBox.outsidePosition));
-                            break ;
+                            break;
                         case "egg1_collider":
                             StartCoroutine(TeleportToCorrectPosition(LevelManager.egg1, LevelManager.egg1.outsidePosition));
                             break;
@@ -69,31 +67,30 @@ public class CollisionObject_LR : MonoBehaviour
                             break;
                     }
 
-
-
                     //log collision
                     AddToEventBuffer(StreamlinedInputManager.Now, "CollisionEvent", $"{this.gameObject.name}-{other.gameObject.name}", $"{(int)LevelManager.level}", $"{LevelManager.level}");
-
                 }
             }
         }
-        if(LevelManager.level == Levels.PourIngredients && LevelManager.placed == true)
-        {
 
+        if (LevelManager.level == Levels.PourIngredients && LevelManager.placed == true)
+        {
             //if (other.gameObject.name != "XR Origin" && other.tag != this.gameObject.tag && other.tag != "noTrigger")
             if (other.CompareTag("hand_collider"))
             {
                 isInsideHand = true;
-
             }
 
-            if(other.gameObject.name == "floor")
+            if (other.gameObject.name == "floor")
             {
                 if (!LevelManager.fallenObjects.Contains(gameObject.name) && !LevelManager.pouredObjects.Contains(gameObject)) // exclude that the list already contains this gameObject
                 {
                     LevelManager.fallenObjects.Add(this.gameObject.name); // add fallen object to list
                     if (failureSound != null)
+                    {
                         PlaySound(failureSound);
+                    }
+
                     //teleport outside when fallen
                     switch (gameObject.name)
                     {
@@ -113,19 +110,21 @@ public class CollisionObject_LR : MonoBehaviour
                             StartCoroutine(TeleportToCorrectPosition(LevelManager.egg2, LevelManager.egg2.outsidePosition));
                             break;
                     }
+
                     //log collision
                     AddToEventBuffer(StreamlinedInputManager.Now, "CollisionEvent", $"{this.gameObject.name}-{other.gameObject.name}", $"{(int)LevelManager.level}", $"{LevelManager.level}");
                 }
             }
         }
 
-        if(LevelManager.level == Levels.FlipPancake1 || LevelManager.level == Levels.FlipPancake2) //|| LevelManager.level == Levels.FlipPancake3
+        if (LevelManager.level == Levels.FlipPancake1 || LevelManager.level == Levels.FlipPancake2) //|| LevelManager.level == Levels.FlipPancake3
         {
             if (other.gameObject.name == "pan_collider" && this.gameObject.name != "spatula_collider")
             {
                 // SUCCESS
                 LevelManager.flipped = true;
             }
+
             if (other.gameObject.name == "floor")
             {
                 if (!LevelManager.fallenObjects.Contains(gameObject.name)) // exclude that the list already contains this gameObject
@@ -135,13 +134,11 @@ public class CollisionObject_LR : MonoBehaviour
                     AddToEventBuffer(StreamlinedInputManager.Now, "CollisionEvent", $"{this.gameObject.name}-{other.gameObject.name}", $"{(int)LevelManager.level}", $"{LevelManager.level}");
                 }
             }
-
-
         }
 
-        if(LevelManager.level == Levels.PlacePancake1 || LevelManager.level == Levels.PlacePancake2) //|| LevelManager.level == Levels.PlacePancake3
+        if (LevelManager.level == Levels.PlacePancake1 || LevelManager.level == Levels.PlacePancake2) //|| LevelManager.level == Levels.PlacePancake3
         {
-            if(this.gameObject.name != "spatula_collider")
+            if (this.gameObject.name != "spatula_collider")
             {
                 if (other.gameObject.name is "plate" or "pancake_Cooked1_collider" or "pancake_Cooked2_collider")
                 {
@@ -161,15 +158,12 @@ public class CollisionObject_LR : MonoBehaviour
             }
         }
 
-        if(LevelManager.level == Levels.SqueezeSyrup)
+        if (LevelManager.level == Levels.SqueezeSyrup)
         {
-
             if (other.CompareTag("hand_collider"))
             {
                 isInsideHand = true;
-
             }
-
 
             if (other.gameObject.name == "floor")
             {
@@ -181,13 +175,11 @@ public class CollisionObject_LR : MonoBehaviour
                 }
             }
         }
-
-
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if(LevelManager.level == Levels.CollectIngredients)
+        if (LevelManager.level == Levels.CollectIngredients)
         {
             if (other.CompareTag("hand_collider"))
             {
@@ -209,7 +201,6 @@ public class CollisionObject_LR : MonoBehaviour
             {
                 isInsideHand = false; // object release
             }
-
         }
     }
 
@@ -228,11 +219,9 @@ public class CollisionObject_LR : MonoBehaviour
         }
     }
 
-
-
     public void FixedUpdate()
     {
-        if(LevelManager.level == Levels.PourIngredients && LevelManager.placed == true || LevelManager.level == Levels.SqueezeSyrup || LevelManager.level == Levels.CollectIngredients)
+        if (LevelManager.level == Levels.PourIngredients && LevelManager.placed == true || LevelManager.level == Levels.SqueezeSyrup || LevelManager.level == Levels.CollectIngredients)
         {
             if (isInsideHand)
             {
@@ -242,7 +231,6 @@ public class CollisionObject_LR : MonoBehaviour
         }
     }
 
-
     IEnumerator TeleportToCorrectPosition(Ingredient ingr, GameObject pos)
     {
         // teleport
@@ -251,13 +239,10 @@ public class CollisionObject_LR : MonoBehaviour
             MjState.TeleportMjRoot(ingr.freeJoint, pos.transform.position, pos.transform.rotation);
         }
 
-
         yield return new WaitForSeconds(0.05f);
-
         // check
         bool positionCorrect = Vector3.Distance(ingr.gameObj.transform.position, pos.transform.position) < 0.05f;
         bool rotationCorrect = Quaternion.Angle(ingr.gameObj.transform.rotation, pos.transform.rotation) < 1f;
-
         if (!positionCorrect || !rotationCorrect)
         {
             // teleport again
@@ -267,6 +252,5 @@ public class CollisionObject_LR : MonoBehaviour
         {
             yield break;
         }
-
     }
 }

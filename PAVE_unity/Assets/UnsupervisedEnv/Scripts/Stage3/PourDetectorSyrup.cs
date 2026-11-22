@@ -3,27 +3,20 @@ using System.IO;
 using UnityEngine;
 
 public class PourDetectorSyrup : MonoBehaviour
-
-
 // based on https://www.youtube.com/watch?v=hyiyjUEReYg
 {
     public int pourTreshold = 45;
     public Transform origin = null;
     public GameObject streamPrefab = null;
-
     public bool isPouring = false;
     private StreamSyrup currentStream = null;
-
-
     private void FixedUpdate()
     {
         // pouring effect just in level 10 active
         if (LevelManager.level == Levels.SqueezeSyrup)
         {
             //bool pourCheck = CalculatePourAngle() < pourTreshold; // < true; > false
-
             bool pourCheck = LevelManager.currentTotalForceSyrup >= LevelManager.maxSqueezeForce; // start pouring at squeezing force
-
             if (isPouring != pourCheck)
             {
                 isPouring = pourCheck;
@@ -37,12 +30,10 @@ public class PourDetectorSyrup : MonoBehaviour
                 }
             }
         }
-
     }
 
     private void StartPour()
     {
-
         currentStream = CreateStream();
         currentStream.Begin();
     }

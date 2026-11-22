@@ -6,12 +6,6 @@ using UnityEngine;
 public class UpdatePRunRd : MonoBehaviour
 {
     public GameObject pastaBoxManager;
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
     // Update is called once per frame
     void Update()
     {

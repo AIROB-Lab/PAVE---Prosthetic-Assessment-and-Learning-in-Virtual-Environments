@@ -6,14 +6,9 @@ public class StreamSyrup : MonoBehaviour
 {
     private LineRenderer lineRenderer = null;
     private ParticleSystem splashParticle = null;
-
-
     private Coroutine pourRoutine = null;
     private Vector3 targetPosition = Vector3.zero;
-
     public static RaycastHit hit;
-
-
     private void Awake()
     {
         lineRenderer = GetComponent<LineRenderer>();
@@ -25,7 +20,6 @@ public class StreamSyrup : MonoBehaviour
     {
         MoveToPosition(0, transform.position);
         MoveToPosition(1, transform.position);
-
     }
 
     public void Begin()
@@ -33,19 +27,16 @@ public class StreamSyrup : MonoBehaviour
         StartCoroutine(UpdateParticle());
         pourRoutine = StartCoroutine(BeginPour());
     }
+
     private IEnumerator BeginPour()
     {
         while (gameObject.activeSelf)
         {
             targetPosition = FindEndPoint();
-
             MoveToPosition(0, transform.position);
             AnimateToPosition(1, targetPosition);
-
-
             yield return null;
         }
-
     }
 
     public void End()
@@ -70,10 +61,8 @@ public class StreamSyrup : MonoBehaviour
     {
         //RaycastHit hit;
         Ray ray = new Ray(transform.position, Vector3.down);
-
         Physics.Raycast(ray, out hit, 2f); // endpoint of ray either hit or 2
         Vector3 endPoint = hit.collider ? hit.point : ray.GetPoint(2f); // endpoint of ray either hit or 2
-
         return endPoint;
     }
 
@@ -88,6 +77,7 @@ public class StreamSyrup : MonoBehaviour
         Vector3 newPosition = Vector3.MoveTowards(currentPoint, targetPosition, Time.deltaTime * 1.75f);
         lineRenderer.SetPosition(index, newPosition);
     }
+
     private bool HasReachedPosition(int index, Vector3 targetPosition)
     {
         Vector3 currentPostion = lineRenderer.GetPosition(index);
@@ -99,7 +89,6 @@ public class StreamSyrup : MonoBehaviour
         while (gameObject.activeSelf)
         {
             splashParticle.gameObject.transform.position = targetPosition;
-
             bool isHitting = HasReachedPosition(1, targetPosition);
             splashParticle.gameObject.SetActive(isHitting);
             yield return null;

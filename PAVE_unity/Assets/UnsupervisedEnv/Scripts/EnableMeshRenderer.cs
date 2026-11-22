@@ -4,9 +4,9 @@ using UnityEngine;
 
 public class EnableMeshRenderer : MonoBehaviour
 {
-    [SerializeField] private bool activeRenderer = true;
+    [SerializeField]
+    private bool activeRenderer = true;
     private bool lastState; // store last known state
-
     public void Start()
     {
         lastState = activeRenderer;
@@ -15,7 +15,7 @@ public class EnableMeshRenderer : MonoBehaviour
 
     public void Update()
     {
-        if (activeRenderer != lastState) 
+        if (activeRenderer != lastState)
         {
             ToggleMeshRenderers(activeRenderer);
             lastState = activeRenderer;
