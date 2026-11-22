@@ -73,7 +73,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -751,7 +751,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -961,7 +961,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -1289,7 +1289,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -1794,7 +1794,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -2094,8 +2094,8 @@ MonoBehaviour:
       active: 1
       EMG_override: 1
       current_value: 0
-      mapping_in: {x: -1, y: 1}
-      mapping_out: {x: -1, y: 1}
+      mapping_in: {x: 0, y: 100}
+      mapping_out: {x: 1, y: -1}
     mj_actuations:
     - {fileID: 7382867021496803094}
   - General:
@@ -2104,7 +2104,7 @@ MonoBehaviour:
       active: 1
       EMG_override: 1
       current_value: 0
-      mapping_in: {x: -1, y: 1}
+      mapping_in: {x: 0, y: 100}
       mapping_out: {x: -1, y: 1}
     mj_actuations:
     - {fileID: 4040206136077608343}
@@ -2114,7 +2114,7 @@ MonoBehaviour:
       active: 1
       EMG_override: 1
       current_value: 0
-      mapping_in: {x: -1, y: 1}
+      mapping_in: {x: 0, y: 100}
       mapping_out: {x: 0, y: 0.6}
     mj_actuations:
     - {fileID: 3158710640898346956}
@@ -2353,7 +2353,6 @@ GameObject:
   - component: {fileID: 2236007735437612111}
   - component: {fileID: 19402087667585740}
   - component: {fileID: 2993993360366057349}
-  - component: {fileID: 6726960271541545587}
   m_Layer: 0
   m_Name: geom_6
   m_TagString: Untagged
@@ -2415,7 +2414,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -2506,20 +2505,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!114 &2993993360366057349
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3398978599448694718}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9a2d7761b9f5e6143a8bcff60df9b380, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  forceSensorGO: {fileID: 456015773890828884}
-  minMaxForce: {x: 0, y: 30}
---- !u!114 &6726960271541545587
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -2714,7 +2699,6 @@ GameObject:
   - component: {fileID: 5306495678613706129}
   - component: {fileID: 1493263362448817809}
   - component: {fileID: 2772709059272408167}
-  - component: {fileID: 745272830732024635}
   m_Layer: 0
   m_Name: geom_14
   m_TagString: hand_collider
@@ -2776,7 +2760,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -2867,20 +2851,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!114 &2772709059272408167
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3513250923520994492}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9a2d7761b9f5e6143a8bcff60df9b380, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  forceSensorGO: {fileID: 3655263561663286290}
-  minMaxForce: {x: 0, y: 10}
---- !u!114 &745272830732024635
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -5693,7 +5663,6 @@ GameObject:
   - component: {fileID: 760132126140387507}
   - component: {fileID: 672875376210826518}
   - component: {fileID: 5735679774280840333}
-  - component: {fileID: 1811164974267120910}
   m_Layer: 0
   m_Name: geom_22
   m_TagString: hand_collider
@@ -5755,7 +5724,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -5859,20 +5828,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   forceSensorGO: {fileID: 1726992436698364469}
   minMaxForce: {x: 0, y: 10}
---- !u!114 &1811164974267120910
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7307783874176235602}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9a2d7761b9f5e6143a8bcff60df9b380, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  forceSensorGO: {fileID: 1726992436698364469}
-  minMaxForce: {x: 0, y: 10}
 --- !u!1 &7322764743851624250
 GameObject:
   m_ObjectHideFlags: 0
@@ -5946,7 +5901,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -6345,7 +6300,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -7105,7 +7060,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -7271,7 +7226,6 @@ GameObject:
   - component: {fileID: 5336918549233768397}
   - component: {fileID: 395295644385504206}
   - component: {fileID: 3320210734642710548}
-  - component: {fileID: 8819433298279431217}
   m_Layer: 0
   m_Name: geom_10
   m_TagString: hand_collider
@@ -7333,7 +7287,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -7424,20 +7378,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!114 &3320210734642710548
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8612754305077618329}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9a2d7761b9f5e6143a8bcff60df9b380, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  forceSensorGO: {fileID: 4776241096794714297}
-  minMaxForce: {x: 0, y: 10}
---- !u!114 &8819433298279431217
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -7633,7 +7573,6 @@ GameObject:
   - component: {fileID: 991459791256980328}
   - component: {fileID: 1990242236689220631}
   - component: {fileID: 6864383897899193053}
-  - component: {fileID: 4462837169428307642}
   m_Layer: 0
   m_Name: geom_18
   m_TagString: hand_collider
@@ -7695,7 +7634,7 @@ MonoBehaviour:
   Settings:
     Priority: 0
     Solver:
-      ConDim: 3
+      ConDim: 6
       SolMix: 1
       SolRef:
         TimeConst: 0.02
@@ -7786,20 +7725,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!114 &6864383897899193053
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8798314631307634445}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9a2d7761b9f5e6143a8bcff60df9b380, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  forceSensorGO: {fileID: 7256363582135608321}
-  minMaxForce: {x: 0, y: 10}
---- !u!114 &4462837169428307642
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

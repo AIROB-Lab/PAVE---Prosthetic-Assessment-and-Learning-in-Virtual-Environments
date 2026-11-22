@@ -9,6 +9,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using static PastaBoxClasses;
 using Color = UnityEngine.Color;
+using Mujoco.Extensions;
 
 public enum Failure
 {
