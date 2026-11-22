@@ -1,4 +1,4 @@
-﻿{
+{
     "dependencies":  {
                          "com.github.mj-unity-extensions":  "file:com.github.mj-unity-extensions",
                          "com.unity.collab-proxy":  "2.14.0",
@@ -54,6 +54,7 @@
                          "com.unity.modules.wind":  "1.0.0",
                          "com.unity.modules.xr":  "1.0.0",
                          "com.unity.pipeline":  "1.0.1",
-                         "org.airob.sim":  "file:../../Dependencies/SIM/Packages/org.airob.sim"
+                         "org.airob.sim":  "file:../../Dependencies/SIM/Packages/org.airob.sim",
+                         "com.unity.xr.hands":  "1.8.1"
                      }
 }

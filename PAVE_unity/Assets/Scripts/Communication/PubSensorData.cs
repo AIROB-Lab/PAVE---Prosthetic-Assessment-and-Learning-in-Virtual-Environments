@@ -1,123 +1,85 @@
-using Mujoco;
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
+using Mujoco;
 using UnityEngine;
-using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
+/// <summary>Reads supported MuJoCo sensors and optionally publishes/logs their measured values.
+/// Scalar has one value, vectors xyz and quaternions xyzw; quantities retain the sensor's units.</summary>
 public class PubSensorData : MonoBehaviour
 {
-    public bool LOGGING;
-    public bool UDP_SENDING;
+    [FormerlySerializedAs("logging")] public bool LOGGING;
+    [FormerlySerializedAs("UdpSending")] public bool UDP_SENDING;
     public bool SEND_WITH_LAST_UDP_TS;
     public byte SIM_SensorCategory;
-    public Type[] SensorCategories = { typeof(MjBodyQuaternionSensor), typeof(MjBodyVectorSensor), typeof(MjActuatorScalarSensor), typeof(MjBaseSensor), typeof(MjGeomQuaternionSensor), typeof(MjGeomVectorSensor), typeof(MjJointScalarSensor), typeof(MjSiteQuaternionSensor), typeof(MjSiteScalarSensor), typeof(MjSiteVectorSensor),typeof(MjUserSensor) };
-
-    [Serializable]
-    public class SensorInfo
+    [Serializable] public class SensorInfo
     {
         public GameObject GO;
         public byte Subcategory;
-        // public bool active;                                 // could be used to send sensor FB or not -> has to be further implemented
-        public double[] lastValue;
-
-        // has to be filled dynamicly with different sensor objects from different classes
-        public dynamic SensorComponent = null;
-
+        [NonSerialized] public double[] lastValue = Array.Empty<double>();
+        [NonSerialized] internal MjBaseSensor component;
     }
     public List<SensorInfo> sensorList = new List<SensorInfo>();
-
-    // Start is called before the first frame update
     void Start()
     {
-        string header = "time_stamp_s" + "," + "sensor_name" + "," + "ForceX" + "," + "ForceY" + "," + "ForceZ" + Environment.NewLine;
-        LoggingManager.CreateNewLog("ForceLogs", header);
-
-        GetAllSensorTypes();
-    }
-
-    /// <summary>
-    /// Check all corresponding types for our sensors. If one is applicable save the component for direct access
-    /// </summary>
-    private void GetAllSensorTypes()
-    {
-        for (int i = 0; i < sensorList.Count; i++)
+        if (LOGGING) LoggingManager.CreateNewLog("SensorLogs", "time_stamp_s,sensor_name,values\n");
+        foreach (var item in sensorList)
         {
-            for (int j = 0; j < SensorCategories.Length; j++)
-            {
-                if (sensorList[i].GO.GetComponent(SensorCategories[j]) != null)
-                {
-                    sensorList[i].SensorComponent = sensorList[i].GO.GetComponent(SensorCategories[j]);
-                }
-            }
+            item.component = item.GO == null ? null : item.GO.GetComponent<MjBaseSensor>();
+            if (item.component == null) Debug.LogWarning("Missing sensor in PubSensorData.", this);
         }
     }
-
-    // Update is called once per frame
-    private void Update()
+    void Update()
     {
-        double[] sensorReading = {};
-
-        for (int i = 0; i < sensorList.Count; i++)
+        foreach (var item in sensorList)
         {
-            switch (sensorList[i].SensorComponent)
-            {
-                case MjJointScalarSensor s:
-                    sensorReading = new double[] { s.SensorReading};
-                    break;
-                case MjSiteVectorSensor s:
-                    sensorReading = new double[] { s.SensorReading.x, s.SensorReading.y, s.SensorReading.z };
-                    break;
-                case MjSiteQuaternionSensor s:
-                    sensorReading = new double[] { s.SensorReading.x, s.SensorReading.y, s.SensorReading.z, s.SensorReading.w };
-                    break;
-            }
-
-            sensorList[i].lastValue = sensorReading;
-
-            string name = sensorList[i].GO.name;
-
+            item.lastValue = Read(item.component);
+            if (item.lastValue.Length == 0) continue;
             if (LOGGING)
             {
-                string values = string.Join(",", sensorReading);
-                string message = $"{StreamlinedInputManager.Now},{name},{values}{Environment.NewLine}"; 
-                LoggingManager.AddToBuffer("SensorLogs", message);
+                string values = string.Join(" ", Array.ConvertAll(item.lastValue, x => x.ToString("R", CultureInfo.InvariantCulture)));
+                string name = item.GO.name.Replace("\"", "\"\"");
+                LoggingManager.AddToBuffer("SensorLogs", FormattableString.Invariant($"{Sim.SimClock.Now},\"{name}\",[{values}]\n"));
             }
-
-            if (UDP_SENDING)
-            {
-                SimUdpSender.SendArrayAsUDPmessage(sensorReading, (SIM_SensorCategory, sensorList[i].Subcategory), SEND_WITH_LAST_UDP_TS);
-            }
+            if (UDP_SENDING) SimUdpSender.SendArrayAsUDPmessage(item.lastValue, (SIM_SensorCategory, item.Subcategory), SEND_WITH_LAST_UDP_TS);
         }
     }
-
+    static double[] Read(MjBaseSensor sensor)
+    {
+        switch (sensor)
+        {
+            case MjJointScalarSensor s: return new[] { s.SensorReading };
+            case MjSiteScalarSensor s: return new[] { s.SensorReading };
+            case MjActuatorScalarSensor s: return new[] { s.SensorReading };
+            case MjSiteVectorSensor s: return Vector(s.SensorReading);
+            case MjBodyVectorSensor s: return Vector(s.SensorReading);
+            case MjGeomVectorSensor s: return Vector(s.SensorReading);
+            case MjSiteQuaternionSensor s: return Quaternion(s.SensorReading);
+            case MjBodyQuaternionSensor s: return Quaternion(s.SensorReading);
+            case MjGeomQuaternionSensor s: return Quaternion(s.SensorReading);
+            default: return Array.Empty<double>();
+        }
+    }
+    static double[] Vector(Vector3 v) => new double[] { v.x, v.y, v.z };
+    static double[] Quaternion(UnityEngine.Quaternion q) => new double[] { q.x, q.y, q.z, q.w };
     public List<double[]> GetAllSensorDataAsArray()
     {
-        List<double[]> sensorVectors = new ();
-        for (int i = 0; i < sensorList.Count; i++)
-        {
-            
-            sensorVectors.Add(sensorList[i].lastValue);
-        }
-
-        return sensorVectors;
+        var result = new List<double[]>();
+        foreach (var item in sensorList) result.Add(item.lastValue);
+        return result;
     }
-
+    /// <summary>Select xyz terms; a scalar uses X. Quaternion W is not part of a vector-force sum.</summary>
     public float GetSumOfAllSensorData(bool componentsX = true, bool componentsY = true, bool componentsZ = true)
     {
-        List<double[]> allVectors = GetAllSensorDataAsArray();
-
         double sum = 0;
-
-        for (int i = 0; i < allVectors.Count; i++)
+        foreach (var item in sensorList)
         {
-            for (int j = 0; j < allVectors[i].Length; j++)
-            {
-                sum += allVectors[i][j];
-            }
+            var v = item.lastValue;
+            if (v.Length > 0 && componentsX) sum += v[0];
+            if (v.Length > 1 && componentsY) sum += v[1];
+            if (v.Length > 2 && componentsZ) sum += v[2];
         }
-
         return (float)sum;
-
     }
 }

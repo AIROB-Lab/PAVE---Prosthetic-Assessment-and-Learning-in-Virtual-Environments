@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using static PastaBoxClasses;
 using Color = UnityEngine.Color;
-using Mujoco.Extensions;
+// MjState is provided by the pinned Mujoco extension package.
 
 public enum Failure
 {
@@ -43,43 +43,43 @@ public class PastaBoxManager : MonoBehaviour
 
         /* Original:
          * Start: Hand leaves the home position
-         * First occurrence of the hand exceeding the ‘Hand Velocity Threshold’ OR first occurrence of the hand exceeding 
-         * the ‘Target Distance Threshold’, whichever happens first
-         * 
+         * First occurrence of the hand exceeding the â€˜Hand Velocity Thresholdâ€™ OR first occurrence of the hand exceeding
+         * the â€˜Target Distance Thresholdâ€™, whichever happens first
+         *
          * Changed to:
          * Start: Hand leaves the home position
          * Trigger Exit (no hand tag collides with obj anymore)
          */
         Reach,
 
-        /*Start: Closing of grip aperture 
+        /*Start: Closing of grip aperture
          * Original:
-         * First occurrence of the hand falling below the ‘Grasp Distance Threshold’
+         * First occurrence of the hand falling below the â€˜Grasp Distance Thresholdâ€™
          * Changed to: First time hand collides with grasp collider box (70 mm larger than pastaBox)
          * Fails, if object was touched and afterwards hand goes outside of grasp collider box
-         */     
+         */
         Grasp,
 
         /*Start: Start of object movement
          * Original:
-         * First occurrence of the object exceeding the ‘Object Velocity Threshold’ 
-         * OR first occurrence of the object exceeding the ‘Target Distance Threshold’, whichever happens first
-         * 
-         * Changed to: 
+         * First occurrence of the object exceeding the â€˜Object Velocity Thresholdâ€™
+         * OR first occurrence of the object exceeding the â€˜Target Distance Thresholdâ€™, whichever happens first
+         *
+         * Changed to:
          * When the  grasp collider box leaves the table (not target as might be pushed away from it)
          */
         Transport,
 
         /*Start: End of object movement
          * Original:
-         * First occurrence of the object falling below the ‘Object Velocity Threshold’ 
-         * OR first occurrence of the object distance falling below the ‘Target Distance Threshold’, whichever happens last 
-         * 
+         * First occurrence of the object falling below the â€˜Object Velocity Thresholdâ€™
+         * OR first occurrence of the object distance falling below the â€˜Target Distance Thresholdâ€™, whichever happens last
+         *
          * Changed to:
          * When the grasp collider box touches the next target
-         * 
-         * End: End of grip aperture opening 
-         * Last occurrence of the hand before exceeding the ‘Release Distance Threshold’*/
+         *
+         * End: End of grip aperture opening
+         * Last occurrence of the hand before exceeding the â€˜Release Distance Thresholdâ€™*/
         Release
     }
 
@@ -161,7 +161,7 @@ public class PastaBoxManager : MonoBehaviour
     public int NUM_RUNS_PER_CELL;
     public ParticipantList PARTICIPANT_LIST { get; private set; }
 
-    // equally distant colors H with same S and V 
+    // equally distant colors H with same S and V
     public Color[] prosthesisColors;
     public int delaySamples = 0;
     public float delayInSeconds = 0;
@@ -207,7 +207,7 @@ public class PastaBoxManager : MonoBehaviour
 
     private Color pb_original = new Color(0.1294118f, 0.1686275f, 0.509804f);
 
-    // event log 
+    // event log
     private string eventHeader = "time_stamp_s" + "," + "participant" + "," + "cell" + "," + "cell_name" + "," + "run" + "," + "mov" + "," + "phase" + "," + "event" + "," +  "value" + Environment.NewLine;
 
     // hand transperancy flag
@@ -334,13 +334,13 @@ public class PastaBoxManager : MonoBehaviour
 
                     nextPhaseSwitch = Time.time + minDelayPhases;
 
-                    // color target 
+                    // color target
                     ChangeSpriteColor(pastaBoxState.currentFrom, grey);
                     ChangeSpriteColor(pastaBoxState.currentTo, yellow);
                     break;
                 }
 
-                // check if object was touched already 
+                // check if object was touched already
                 if (CollisionManager.FindCollisionBetweenTagAndObj("hand_collider", "ROI_collider_box").Count > 0)
                 {
                     pastaBoxState.pbTouched = true;
@@ -357,7 +357,7 @@ public class PastaBoxManager : MonoBehaviour
                     pastaBoxState.currentPhase = PastaBoxPhases.None;
                     // log event
                     AddToEventBuffer(StreamlinedInputManager.Now, Events.PhaseChange, pastaBoxState.currentPhase.ToString());
-                    // color target 
+                    // color target
                     ChangeSpriteColor(pastaBoxState.currentFrom, grey);
                     ChangeSpriteColor(pastaBoxState.currentTo, grey);
                     ChangeSpriteColor(home, pink);
@@ -447,7 +447,7 @@ public class PastaBoxManager : MonoBehaviour
                     // interpret angle for log
                     string angleInterpret = InterpretAngle(angle);
 
-                    // check if it was success, otherwise failure // Success: Pasta Box touches correct target, but not boundaries, stands 
+                    // check if it was success, otherwise failure // Success: Pasta Box touches correct target, but not boundaries, stands
                     if (CollisionManager.FindCollisionByNames(pastaBoxState.currentTo.name, "ROI_collider_box").Count > 0)
                     {
                         if (CollisionManager.FindCollisionByNames("boundary", "ROI_collider_box").Count == 0)
@@ -692,7 +692,7 @@ public class PastaBoxManager : MonoBehaviour
 
         // start new cell, by setting a new object pastaBoxState; SET_RUN -1 as it will increment on Home Press
         pastaBoxState = new PastaBoxState(participant:_participant, cell: _cell_id, cell_name:_cell_name, run:SET_RUN-1, failure:_failure, delay: _delay, color: _color, failRuns: _failRuns);
-        
+
         // set delay
         if (pastaBoxState.delay == true)
         {
@@ -865,7 +865,7 @@ public class PastaBoxManager : MonoBehaviour
         float sinFreq = UnityEngine.Random.Range(sinFreq_min, sinFreq_max);
         float amplitude= UnityEngine.Random.Range(amplitude_min, amplitude_max);
         float phase = UnityEngine.Random.Range(phase_min, phase_max);
-        
+
         float[] signal = CreateSinSignal(fs, duration, sinFreq, amplitude, phase);
 
         return signal;

@@ -7,7 +7,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System;
 using System.Linq;
-using Mujoco.Extensions;
+// MjState is provided by the pinned Mujoco extension package.
 
 
 
@@ -24,7 +24,7 @@ public class LevelManager : MonoBehaviour
     public static Levels level;
 
     // general
-    [HideInInspector] public Levels levelPause; // to save the current level during pause 
+    [HideInInspector] public Levels levelPause; // to save the current level during pause
     [Header("General")]
     public int participantID;
     public TextMeshProUGUI elapsedTimeText;
@@ -34,7 +34,7 @@ public class LevelManager : MonoBehaviour
     public AudioSource failureSound;
 
     private float elapsedTime = 0f; // time during one level
-    private float totalElapsedTime = 0f; // running time 
+    private float totalElapsedTime = 0f; // running time
 
     public GameObject[] instructionText;
 
@@ -313,7 +313,7 @@ public class LevelManager : MonoBehaviour
 
             /// <summary>
             /// collect ingredients (milk bottle, sugar box, flour box, 2 eggs) in designated area
-            /// continue with next level if everything is collected or time over 
+            /// continue with next level if everything is collected or time over
             /// </summary>
             case Levels.CollectIngredients: // #1
 
@@ -373,7 +373,7 @@ public class LevelManager : MonoBehaviour
                                 // play Particle System
                                 psEgg1?.Play();
 
-                                // teleportate egg 
+                                // teleportate egg
                                 StartCoroutine(WaitAndTeleportateEgg(egg1.gameObj));
 
 
@@ -415,7 +415,7 @@ public class LevelManager : MonoBehaviour
                                 // play Particle System
                                 psEgg2?.Play();
 
-                                // teleportate egg 
+                                // teleportate egg
                                 StartCoroutine(WaitAndTeleportateEgg(egg2.gameObj));
 
                             }
@@ -720,7 +720,7 @@ public class LevelManager : MonoBehaviour
                                 // play Particle System
                                 psEgg1?.Play();
 
-                                // teleportate egg 
+                                // teleportate egg
                                 StartCoroutine(WaitAndTeleportateEgg(egg1.gameObj));
 
                                 // check broke over bowl by overlapSphere
@@ -773,7 +773,7 @@ public class LevelManager : MonoBehaviour
                                 psEgg2?.Play();
 
 
-                                // teleportate egg 
+                                // teleportate egg
                                 StartCoroutine(WaitAndTeleportateEgg(egg2.gameObj));
 
                                 // check broke over bowl by overlapSphere
@@ -885,7 +885,7 @@ public class LevelManager : MonoBehaviour
             /// <summary>
             /// heat up the stove top by rotating the knob
             /// access to jnob angle for success criteria
-            /// 
+            ///
             /// </summary>
             case Levels.HeatUpStove: // #3
                 // reset bool for object placing from level 2 and for level 4
@@ -1497,7 +1497,7 @@ public class LevelManager : MonoBehaviour
 
         yield return new WaitForSeconds(0.05f);
 
-        // check 
+        // check
         bool positionCorrect = Vector3.Distance(ingr.gameObj.transform.position, pos.transform.position) < 0.05f;
         bool rotationCorrect = Quaternion.Angle(ingr.gameObj.transform.rotation, pos.transform.rotation) < 1f;
 
@@ -1530,7 +1530,7 @@ public class LevelManager : MonoBehaviour
 
         yield return new WaitForSeconds(0.3f);
 
-        // check 
+        // check
         bool positionCorrect = Vector3.Distance(go.transform.position, pos.transform.position) < 0.05f;
         bool rotationCorrect = Quaternion.Angle(go.transform.rotation, pos.transform.rotation) < 1f;
 
@@ -1765,7 +1765,7 @@ public enum IngredientNames
     milk,
     sugar,
     flour,
-    egg1, 
+    egg1,
     egg2
 }
 
@@ -1797,4 +1797,3 @@ public class Ingredient
     public GameObject colliderGO;
     public MjFreeJoint freeJoint;
 }
-

@@ -1,0 +1,13 @@
+root = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+csharp_prefer_braces = true:suggestion
+
+[*.{json,asmdef,md}]
+charset = utf-8
+insert_final_newline = true

@@ -1,3 +1,16 @@
-﻿PAVE_unity/data
+PAVE_unity/data
 PAVE_unity/Assets/mujoco.dll
 PAVE_unity/Assets/mujoco.dll.meta
+
+# Unity and IDE-generated files (never participant data or source).
+PAVE_unity/[Ll]ibrary/
+PAVE_unity/[Tt]emp/
+PAVE_unity/[Oo]bj/
+PAVE_unity/[Ll]ogs/
+PAVE_unity/[Uu]ser[Ss]ettings/
+PAVE_unity/[Bb]uilds/
+PAVE_unity/.vs/
+PAVE_unity/*.csproj
+PAVE_unity/*.sln
+PAVE_unity/*.slnx
+PAVE_unity/MUJOCO_LOG.TXT

@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Mujoco;
-using Mujoco.Extensions;
+// MjState is provided by the pinned Mujoco extension package.
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Events;
@@ -14,8 +14,8 @@ public class CollisionObject_LR : MonoBehaviour
     public delegate void ObjectGrabbedEvent(GameObject obj);
     public static event ObjectGrabbedEvent OnObjectGrabbed;
     public AudioSource successSound;
-    public AudioSource failureSound;        
-    public GameObject outsidePosition = null; //outside position 
+    public AudioSource failureSound;
+    public GameObject outsidePosition = null; //outside position
     private bool isInsideHand = false; // to detect object grabbing and release
 
 
@@ -32,7 +32,7 @@ public class CollisionObject_LR : MonoBehaviour
 
             if (other.gameObject.name != "XR Origin" && other.tag == "CollectionArea")
             {
-                if (!LevelManager.collectedObjects.Contains(gameObject)) // exclude that the list already contains this gameObject 
+                if (!LevelManager.collectedObjects.Contains(gameObject)) // exclude that the list already contains this gameObject
                 {
                     LevelManager.collectedObjects.Add(this.gameObject); // add collected object to list of ingredients
                     PlaySound(successSound);
@@ -40,11 +40,11 @@ public class CollisionObject_LR : MonoBehaviour
                     //log collision
                     AddToEventBuffer(StreamlinedInputManager.Now, "CollisionEvent", $"{this.gameObject.name}-{other.gameObject.name}", $"{(int)LevelManager.level}", $"{LevelManager.level}");
                 }
-                
+
             }
             if (other.gameObject.name == "floor")
             {
-                if (!LevelManager.fallenObjects.Contains(gameObject.name) && !LevelManager.collectedObjects.Contains(gameObject)) // exclude that the list already contains this gameObject 
+                if (!LevelManager.fallenObjects.Contains(gameObject.name) && !LevelManager.collectedObjects.Contains(gameObject)) // exclude that the list already contains this gameObject
                 {
                     LevelManager.fallenObjects.Add(this.gameObject.name); // add fallen object to list
                     if(failureSound != null)
@@ -70,7 +70,7 @@ public class CollisionObject_LR : MonoBehaviour
                     }
 
 
-                    
+
                     //log collision
                     AddToEventBuffer(StreamlinedInputManager.Now, "CollisionEvent", $"{this.gameObject.name}-{other.gameObject.name}", $"{(int)LevelManager.level}", $"{LevelManager.level}");
 
@@ -84,12 +84,12 @@ public class CollisionObject_LR : MonoBehaviour
             if (other.CompareTag("hand_collider"))
             {
                 isInsideHand = true;
-                
+
             }
 
             if(other.gameObject.name == "floor")
             {
-                if (!LevelManager.fallenObjects.Contains(gameObject.name) && !LevelManager.pouredObjects.Contains(gameObject)) // exclude that the list already contains this gameObject 
+                if (!LevelManager.fallenObjects.Contains(gameObject.name) && !LevelManager.pouredObjects.Contains(gameObject)) // exclude that the list already contains this gameObject
                 {
                     LevelManager.fallenObjects.Add(this.gameObject.name); // add fallen object to list
                     if (failureSound != null)
@@ -128,7 +128,7 @@ public class CollisionObject_LR : MonoBehaviour
             }
             if (other.gameObject.name == "floor")
             {
-                if (!LevelManager.fallenObjects.Contains(gameObject.name)) // exclude that the list already contains this gameObject 
+                if (!LevelManager.fallenObjects.Contains(gameObject.name)) // exclude that the list already contains this gameObject
                 {
                     LevelManager.fallenObjects.Add(this.gameObject.name); // add fallen object to list
                     //log collision
@@ -149,10 +149,10 @@ public class CollisionObject_LR : MonoBehaviour
                     LevelManager.onPlate = true;
                 }
             }
-            
+
             if (other.gameObject.name == "floor")
             {
-                if (!LevelManager.fallenObjects.Contains(gameObject.name)) // exclude that the list already contains this gameObject 
+                if (!LevelManager.fallenObjects.Contains(gameObject.name)) // exclude that the list already contains this gameObject
                 {
                     LevelManager.fallenObjects.Add(this.gameObject.name); // add fallen object to list
                     //log collision
@@ -163,7 +163,7 @@ public class CollisionObject_LR : MonoBehaviour
 
         if(LevelManager.level == Levels.SqueezeSyrup)
         {
-            
+
             if (other.CompareTag("hand_collider"))
             {
                 isInsideHand = true;
@@ -173,7 +173,7 @@ public class CollisionObject_LR : MonoBehaviour
 
             if (other.gameObject.name == "floor")
             {
-                if (!LevelManager.fallenObjects.Contains(gameObject.name)) // exclude that the list already contains this gameObject 
+                if (!LevelManager.fallenObjects.Contains(gameObject.name)) // exclude that the list already contains this gameObject
                 {
                     LevelManager.fallenObjects.Add(this.gameObject.name); // add fallen object to list
                     //log collision
@@ -182,7 +182,7 @@ public class CollisionObject_LR : MonoBehaviour
             }
         }
 
-       
+
     }
 
     private void OnTriggerExit(Collider other)
@@ -254,7 +254,7 @@ public class CollisionObject_LR : MonoBehaviour
 
         yield return new WaitForSeconds(0.05f);
 
-        // check 
+        // check
         bool positionCorrect = Vector3.Distance(ingr.gameObj.transform.position, pos.transform.position) < 0.05f;
         bool rotationCorrect = Quaternion.Angle(ingr.gameObj.transform.rotation, pos.transform.rotation) < 1f;
 
