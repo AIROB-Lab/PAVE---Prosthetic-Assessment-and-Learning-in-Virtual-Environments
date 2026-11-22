@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
@@ -8,26 +8,20 @@ public class HeightInputController : MonoBehaviour
     public TMP_InputField topField;
     public TMP_InputField midField;
     public TMP_InputField botField;
-
     [Tooltip("Local Y (relative to each cupboard) if false; world Y if true")]
     public bool useWorldPosition = false;
-
     [Tooltip("How much each +/- click moves the shelf, in metres (0.01 = 1 cm)")]
     public float step = 0.01f;
-
     [Header("Initial shelf heights (metres) - applied on Start")]
     [Tooltip("If true, force the heights below at startup. If false, keep whatever the shelves already have in the scene.")]
     public bool applyInitialHeightsOnStart = true;
     public float initialBotY = 0.5f;
     public float initialMidY = 1.0f;
     public float initialTopY = 1.5f;
-
     [Tooltip("Re-apply the chosen height every frame so the MuJoCo solver can't overwrite it")]
     public bool holdAgainstPhysics = true;
-
     [Tooltip("Print how many levels were found for each tier at startup")]
     public bool verbose = false;
-
     // one entry per tier (top/mid/bot)
     class Tier
     {
@@ -37,19 +31,32 @@ public class HeightInputController : MonoBehaviour
     }
 
     readonly List<Tier> tiers = new List<Tier>();
-
     // the height each level should have, so other scripts can read it even while MuJoCo
     // has temporarily written the old height back into the transform
     static readonly Dictionary<Transform, float> heldY = new Dictionary<Transform, float>();
     static bool heldUseWorld;
-
     /// <summary>World position of a shelf level at the height chosen in the UI.</summary>
     public static Vector3 HeldPosition(Transform level)
     {
-        if (level == null) return Vector3.zero;
-        if (!heldY.TryGetValue(level, out float y)) return level.position;   // not controlled: use as is
-        if (heldUseWorld) { var p = level.position; p.y = y; return p; }
-        var lp = level.localPosition; lp.y = y;
+        if (level == null)
+        {
+            return Vector3.zero;
+        }
+
+        if (!heldY.TryGetValue(level, out float y))
+        {
+            return level.position; // not controlled: use as is
+        }
+
+        if (heldUseWorld)
+        {
+            var p = level.position;
+            p.y = y;
+            return p;
+        }
+
+        var lp = level.localPosition;
+        lp.y = y;
         return level.parent != null ? level.parent.TransformPoint(lp) : lp;
     }
 
@@ -63,19 +70,28 @@ public class HeightInputController : MonoBehaviour
     void AddTier(TMP_InputField field, string levelName, float initialY)
     {
         var levels = FindAllByName(levelName);
-        if (verbose) Debug.Log($"[TierHeight] {levelName}: found {levels.Length} level(s).");
-        if (field == null || levels.Length == 0) return;
+        if (verbose)
+        {
+            Debug.Log($"[TierHeight] {levelName}: found {levels.Length} level(s).");
+        }
+
+        if (field == null || levels.Length == 0)
+        {
+            return;
+        }
 
         // Inspector value is the source of truth at startup; otherwise keep the scene's current Y.
         float startY = applyInitialHeightsOnStart ? initialY : CurrentY(levels);
-
-        var tier = new Tier { levels = levels, field = field, targetY = startY };
+        var tier = new Tier
+        {
+            levels = levels,
+            field = field,
+            targetY = startY
+        };
         tiers.Add(tier);
-
-        SetY(levels, startY);                       // apply the initial height immediately
+        SetY(levels, startY); // apply the initial height immediately
         field.onEndEdit.AddListener(text => ApplyText(tier, text));
         field.SetTextWithoutNotify(startY.ToString("0.###"));
-
         // make room on the left so typed text doesn't sit under the buttons
         if (field.textViewport != null)
         {
@@ -92,15 +108,20 @@ public class HeightInputController : MonoBehaviour
     // so the height we re-assert here is the one that survives on screen.
     void LateUpdate()
     {
-        if (!holdAgainstPhysics) return;
+        if (!holdAgainstPhysics)
+        {
+            return;
+        }
+
         foreach (var tier in tiers)
+        {
             SetY(tier.levels, tier.targetY);
+        }
     }
 
     void MakeStepButton(TMP_InputField field, Tier tier, string label, bool topHalf, float delta)
     {
-        var go = new GameObject(topHalf ? "BtnPlus" : "BtnMinus",
-                                typeof(RectTransform), typeof(Image), typeof(Button));
+        var go = new GameObject(topHalf ? "BtnPlus" : "BtnMinus", typeof(RectTransform), typeof(Image), typeof(Button));
         var rt = go.GetComponent<RectTransform>();
         rt.SetParent(field.transform, false);
         rt.anchorMin = new Vector2(0f, topHalf ? 0.5f : 0f);
@@ -108,23 +129,24 @@ public class HeightInputController : MonoBehaviour
         rt.pivot = new Vector2(0f, topHalf ? 1f : 0f);
         rt.sizeDelta = new Vector2(28f, 0f);
         rt.anchoredPosition = new Vector2(1f, topHalf ? -1f : 1f);
-
         var img = go.GetComponent<Image>();
         img.color = new Color(0.82f, 0.82f, 0.82f, 1f);
-
         var btn = go.GetComponent<Button>();
         btn.targetGraphic = img;
         btn.onClick.AddListener(() => Step(tier, delta));
-
         var lgo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
         var lrt = lgo.GetComponent<RectTransform>();
         lrt.SetParent(rt, false);
-        lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
-        lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
+        lrt.anchorMin = Vector2.zero;
+        lrt.anchorMax = Vector2.one;
+        lrt.offsetMin = Vector2.zero;
+        lrt.offsetMax = Vector2.zero;
         var txt = lgo.GetComponent<TextMeshProUGUI>();
         txt.text = label;
         txt.alignment = TextAlignmentOptions.Center;
-        txt.enableAutoSizing = true; txt.fontSizeMin = 6; txt.fontSizeMax = 32;
+        txt.enableAutoSizing = true;
+        txt.fontSizeMin = 6;
+        txt.fontSizeMax = 32;
         txt.color = Color.black;
         txt.raycastTarget = false;
     }
@@ -138,22 +160,36 @@ public class HeightInputController : MonoBehaviour
 
     void ApplyText(Tier tier, string text)
     {
-        if (!float.TryParse(text, out float h)) { Debug.LogWarning($"'{text}' isn't a valid number."); return; }
+        if (!float.TryParse(text, out float h))
+        {
+            Debug.LogWarning($"'{text}' isn't a valid number.");
+            return;
+        }
+
         tier.targetY = h;
         SetY(tier.levels, tier.targetY);
         tier.field.SetTextWithoutNotify(tier.targetY.ToString("0.###"));
     }
 
-    float CurrentY(Transform[] levels)
-        => useWorldPosition ? levels[0].position.y : levels[0].localPosition.y;
-
+    float CurrentY(Transform[] levels) => useWorldPosition ? levels[0].position.y : levels[0].localPosition.y;
     void SetY(Transform[] levels, float y)
     {
         foreach (var lvl in levels)
         {
-            heldY[lvl] = y; heldUseWorld = useWorldPosition;      // remember the chosen height
-            if (useWorldPosition) { var p = lvl.position; p.y = y; lvl.position = p; }
-            else { var p = lvl.localPosition; p.y = y; lvl.localPosition = p; }
+            heldY[lvl] = y;
+            heldUseWorld = useWorldPosition; // remember the chosen height
+            if (useWorldPosition)
+            {
+                var p = lvl.position;
+                p.y = y;
+                lvl.position = p;
+            }
+            else
+            {
+                var p = lvl.localPosition;
+                p.y = y;
+                lvl.localPosition = p;
+            }
         }
     }
 
@@ -162,8 +198,13 @@ public class HeightInputController : MonoBehaviour
         var all = Resources.FindObjectsOfTypeAll<Transform>();
         var result = new List<Transform>();
         foreach (var t in all)
+        {
             if (t.name == targetName && t.gameObject.scene.IsValid())
+            {
                 result.Add(t);
+            }
+        }
+
         return result.ToArray();
     }
 }

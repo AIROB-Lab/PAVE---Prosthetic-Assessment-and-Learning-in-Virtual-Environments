@@ -6,144 +6,29 @@ using Sim;
 using Sim.Tracking;
 using UnityEngine;
 using UnityEngine.XR;
+using UnityEngine.Serialization;
 using ViveSR.anipal.Eye;
 
 /// <summary>PAVE research acquisition and recording; Unity XR components own movement.
 /// Generic pose/gaze acquisition lives in SIM, HTC native lifecycle in its dedicated adapter.
-/// Legacy public fields retain their scene identities. Task ROI labels and CSV schemas stay here.</summary>
+/// Serialized fields migrate through FormerlySerializedAs. Task ROI labels and CSV schemas stay here.</summary>
 public class PaveTracking : MonoBehaviour
 {
-    public class HeadTracking
-    {
-        public double headTimestamp;
-        public Vector3 headPosition;
-        public Quaternion headRotation;
-        Vector3 Position
-        {
-            get { return headPosition;  }
-        }
-        Quaternion Rotation
-        {
-            get { return headRotation; }
-        }
-        double Timestamp
-        {
-            get { return headTimestamp; }
-        }
-    }
-
-    public class LeftControllerTracking
-    {
-        public double leftControllerTimestamp;
-        public Vector3 leftControllerPosition;
-        public Quaternion leftControllerRotation;
-        Vector3 Position
-        {
-            get { return leftControllerPosition; }
-        }
-        Quaternion Rotation
-        {
-            get { return leftControllerRotation; }
-        }
-        double Timestamp
-        {
-            get { return leftControllerTimestamp; }
-        }
-    }
-
-    public class RightControllerTracking
-    {
-        public double rightControllerTimestamp;
-        public Vector3 rightControllerPosition;
-        public Quaternion rightControllerRotation;
-        Vector3 Position
-        {
-            get { return rightControllerPosition; }
-        }
-        Quaternion Rotation
-        {
-            get { return rightControllerRotation; }
-        }
-        double Timestamp
-        {
-            get { return rightControllerTimestamp; }
-        }
-    }
-
-    public class EyeTracking
-    {
-        internal Vector3 debugPos;
-        internal Quaternion debugOri;
-
-
-        // unix timestamp, eyedata
-        private (double, EyeData) current_eyeData;
-        private List<(double, EyeData)> last_eyeDatas = new List<(double, EyeData)>();
-        public (double, EyeData) EyeData
-        {
-            get { lock (eyeLock) { return current_eyeData; } }
-            set { lock (eyeLock) {
-                    current_eyeData = value;
-                    last_eyeDatas.Add(value);
-
-                    while (last_eyeDatas.Count() > last_eyeData_size)
-                    {
-                        last_eyeDatas.RemoveAt(0);
-                    }
-                }
-            }
-        }
-        public (double, EyeData)[] Last_eyeDatas
-        {
-            get {lock (eyeLock)
-                {
-                    // last eye datas to array
-                    (double, EyeData)[] arrOut = last_eyeDatas.ToArray();
-                    // clear eye data buffer => Important can only get it once!
-                    last_eyeDatas.Clear();
-                    // return
-                    return arrOut;
-                }}
-        }
-
-        //{
-        //    get { lock (eyeLock) { return eyeTimestamp; } }
-        //    set { lock (eyeLock) { eyeTimestamp = value; } }
-        //}
-    }
-
-    public class TrackerTracking
-    {
-        public double trackerTimestamp;
-        public Vector3 trackerPosition;
-        public Quaternion trackerRotation;
-        Vector3 Position
-        {
-            get { return trackerPosition; }
-        }
-        Quaternion Rotation
-        {
-            get { return trackerRotation; }
-        }
-        double Timestamp
-        {
-            get { return trackerTimestamp; }
-        }
-    }
-
     [System.Serializable]
-    public class TrackerLog
+    public class TrackerBinding
     {
-        public bool used;
-        public position pos;
-        public TrackerLog(position pos)
+        [FormerlySerializedAs("used")]
+        public bool Enabled;
+        [FormerlySerializedAs("pos")]
+        public TrackerRole Role;
+        public TrackerBinding(TrackerRole role)
         {
-            this.used = false;
-            this.pos = pos;
+            Enabled = false;
+            Role = role;
         }
     }
 
-    public enum position : uint
+    public enum TrackerRole : uint
     {
         TrackerLeftFoot = 0x1000u,
         TrackerRightFoot = 0x2000u,
@@ -159,135 +44,60 @@ public class PaveTracking : MonoBehaviour
         TrackerKeyboard = 0x800000u
     }
 
-    partial class SIMHeader
-    {
-        static public string eyeHeader =
-
-        // timestamps
-        "time_stamp_s" + "," + // from stopwatch
-        "time_stamp_eyeData" + "," +
-
-        // combined eye data
-        "gaze_direction_combined_x" + "," +
-        "gaze_direction_combined_y" + "," +
-        "gaze_direction_combined_z" + "," +
-        "gazeOriginCombinedX_mm" + "," +
-        "gazeOriginCombinedY_mm" + "," +
-        "gazeOriginCombinedZ_mm" + "," +
-        "convergenceDistanceValidity" + "," +
-        "convergenceDistance_mm" + "," +
-
-        // right eye Data
-        "eyeDataValidataBitMaskRight" + "," +
-        "gazeDirectionRightX" + "," +
-        "gazeDirectionRightY" + "," +
-        "gazeDirectionRightZ" + "," +
-        "pupilDiameterRight_mm" + "," +
-        "eyeOpennessRight" + "," +
-        "pupilPositionInSensorAreaRightX" + "," +
-        "pupilPositionInSensorAreaRightY" + "," +
-
-        // left eye Data
-        "eyeDataValidataBitMaskLeft" + "," +
-        "gazeDirectionLeftX" + "," +
-        "gazeDirectionLeftY" + "," +
-        "gazeDirectionLeftZ" + "," +
-        "pupilDiameterLeft_mm" + "," +
-        "eyeOpennessLeft" + "," +
-        "pupilPositionInSensorAreaLeftX" + "," +
-        "pupilPositionInSensorAreaLeftY" +
-
-        Environment.NewLine;
-
-        static public string headHeader =
-        "time_stamp_s" + "," +
-        "position_x" + "," +
-        "position_y" + "," +
-        "position_z" + "," +
-        "rotation_w" + "," +
-        "rotation_x" + "," +
-        "rotation_y" + "," +
-        "rotation_z" +
-        Environment.NewLine;
-
-        static public string leftControllerHeader =
-        "time_stamp_s" + "," +
-        "position_x" + "," +
-        "position_y" + "," +
-        "position_z" + "," +
-        "rotation_w" + "," +
-        "rotation_x" + "," +
-        "rotation_y" + "," +
-        "rotation_z" +
-        Environment.NewLine;
-
-        static public string rightControllerHeader =
-        "time_stamp_s" + "," +
-        "position_x" + "," +
-        "position_y" + "," +
-        "position_z" + "," +
-        "rotation_w" + "," +
-        "rotation_x" + "," +
-        "rotation_y" + "," +
-        "rotation_z" +
-        Environment.NewLine;
-
-
-        static public string trackerHeader =
-        "time_stamp(ms)" +
-        Environment.NewLine;
-
-        static public string udpHeader =
-        "time_stamp_s" + "," +
-        "time_stamp(imBlocks)" + "," +
-        "category" + "," +
-        "subcategory" + "," +
-        "data" + "," +
-        "counter" +
-        Environment.NewLine;
-
-        static public string roiHeader = "time_stamp_s" + "," + "hand" + "," + "object" + "," + "target" + ","+ "hitProperties" + Environment.NewLine;
-
-    }
-
-
+    const string EyeCsvHeader = // timestamps
+ "time_stamp_s" + "," + // UTC-anchored host acquisition time
+ "time_stamp_eyeData" + "," + // combined eye data
+ "gaze_direction_combined_x" + "," + "gaze_direction_combined_y" + "," + "gaze_direction_combined_z" + "," + "gazeOriginCombinedX_mm" + "," + "gazeOriginCombinedY_mm" + "," + "gazeOriginCombinedZ_mm" + "," + "convergenceDistanceValidity" + "," + "convergenceDistance_mm" + "," + // right eye Data
+ "eyeDataValidataBitMaskRight" + "," + "gazeDirectionRightX" + "," + "gazeDirectionRightY" + "," + "gazeDirectionRightZ" + "," + "pupilDiameterRight_mm" + "," + "eyeOpennessRight" + "," + "pupilPositionInSensorAreaRightX" + "," + "pupilPositionInSensorAreaRightY" + "," + // left eye Data
+ "eyeDataValidataBitMaskLeft" + "," + "gazeDirectionLeftX" + "," + "gazeDirectionLeftY" + "," + "gazeDirectionLeftZ" + "," + "pupilDiameterLeft_mm" + "," + "eyeOpennessLeft" + "," + "pupilPositionInSensorAreaLeftX" + "," + "pupilPositionInSensorAreaLeftY" + "\n";
+    const string RoiCsvHeader = "time_stamp_s,hand,object,target,hitProperties\n";
     [Tooltip("Record enabled acquisition channels into the current PAVE session.")]
-    public bool activateLogging;
-    public bool trackEyes;
-    public bool trackHead;
-    public bool trackLeftController;
-    public bool trackRightController;
-    public List<TrackerLog> usedTrackers = new List<TrackerLog>();
+    [FormerlySerializedAs("activateLogging")]
+    public bool EnableLogging;
+    [FormerlySerializedAs("trackEyes")]
+    public bool TrackEyes;
+    [FormerlySerializedAs("trackHead")]
+    public bool TrackHead;
+    [FormerlySerializedAs("trackLeftController")]
+    public bool TrackLeftController;
+    [FormerlySerializedAs("trackRightController")]
+    public bool TrackRightController;
+    [FormerlySerializedAs("usedTrackers")]
+    public List<TrackerBinding> Trackers = new List<TrackerBinding>();
     [Tooltip("XR Origin camera-offset transform, the parent space of tracked camera/controllers.")]
-    public Transform trackingOrigin;
+    [FormerlySerializedAs("trackingOrigin")]
+    public Transform TrackingOrigin;
     [Tooltip("Preferred eye provider. HTC raw data remains available through the separate SDK adapter.")]
-    public SimGazeSource gazeSource;
+    [FormerlySerializedAs("gazeSource")]
+    public SimGazeSource GazeSource;
     [Tooltip("Optional combined-gaze provider when the preferred source has no fresh sample.")]
-    public SimGazeSource fallbackGazeSource;
-    [Min(0.01f)] public float maximumGazeAgeSeconds = 0.25f;
-    [Min(0)] public float spherecastRadius;
+    [FormerlySerializedAs("fallbackGazeSource")]
+    public SimGazeSource FallbackGazeSource;
+    [FormerlySerializedAs("maximumGazeAgeSeconds")]
+    [Min(0.01f)]
+    public float MaximumGazeAgeSeconds = 0.25f;
+    [FormerlySerializedAs("spherecastRadius")]
+    [Min(0)]
+    public float GazeCastRadius;
     [Tooltip("Optional gaze debug sphere; never assign the headset, controller or prosthesis.")]
-    public GameObject eyeBall;
-    public GameObject main_camera;
+    [FormerlySerializedAs("eyeBall")]
+    public GameObject GazeDebugObject;
+    [FormerlySerializedAs("main_camera")]
+    public GameObject GazeCamera;
+    /// <summary>Latest observations. Check IsValid before using a pose; missing data is not a zero measurement.</summary>
+    public static SimPoseSample HeadPose { get; private set; }
+    public static SimPoseSample LeftControllerPose { get; private set; }
+    public static SimPoseSample RightControllerPose { get; private set; }
 
-    // Compatibility properties for existing study displays. Measurements are observations only.
-    public static bool S_activateLogging;
-    public static bool isEyeCallbackWorking;
-    public static bool trackEyesCallback;
-    public static int last_eyeData_size = 100;
-    static readonly object eyeLock = new object();
-    public static HeadTracking headTracker = new HeadTracking();
-    public static LeftControllerTracking leftControllerTracker = new LeftControllerTracking();
-    public static RightControllerTracking rightControllerTracker = new RightControllerTracking();
-    public static EyeTracking eyeTracker = new EyeTracking();
-    public static Dictionary<string, TrackerTracking> trackerTrackers = new Dictionary<string, TrackerTracking>();
+    static readonly Dictionary<TrackerRole, SimPoseSample> trackerPoses = new Dictionary<TrackerRole, SimPoseSample>();
+    public static IReadOnlyDictionary<TrackerRole, SimPoseSample> TrackerPoses => trackerPoses;
     public static double Now => SimClock.Now;
-    public static bool lookingAtHand { get; private set; }
-    public static bool lookingAtObject { get; private set; }
-    public static bool lookingAtTarget { get; private set; }
-    public static bool eyeValid { get; private set; }
-    public static bool eyeValid2 { get; private set; }
-    public static bool gazeValid { get; private set; }
+    public static bool LookingAtHand { get; private set; }
+    public static bool LookingAtObject { get; private set; }
+    public static bool LookingAtTarget { get; private set; }
+    public static bool LeftEyeValid { get; private set; }
+    public static bool RightEyeValid { get; private set; }
+    public static bool GazeValid { get; private set; }
     public static string EyeStatus { get; private set; } = "Disabled";
     public static string ActiveGazeSource { get; private set; } = "None";
     public bool? LeftEyeValidity { get; private set; }
@@ -296,13 +106,12 @@ public class PaveTracking : MonoBehaviour
     readonly SimXrPoseReader head = new SimXrPoseReader(InputDeviceCharacteristics.HeadMounted);
     readonly SimXrPoseReader left = new SimXrPoseReader(InputDeviceCharacteristics.Controller | InputDeviceCharacteristics.Left);
     readonly SimXrPoseReader right = new SimXrPoseReader(InputDeviceCharacteristics.Controller | InputDeviceCharacteristics.Right);
-    readonly Dictionary<position, SimXrPoseReader> trackers = new Dictionary<position, SimXrPoseReader>();
+    readonly Dictionary<TrackerRole, SimXrPoseReader> trackers = new Dictionary<TrackerRole, SimXrPoseReader>();
     PaveSranipalEyeSource rawEyeSource;
     static PaveTracking owner;
     bool warnedMissingLogger;
     const string PoseHeader = "host_time_s,availability,local_x_m,local_y_m,local_z_m,local_qw,local_qx,local_qy,local_qz,world_x_m,world_y_m,world_z_m,world_qw,world_qx,world_qy,world_qz\n";
     const string GazeHeader = "host_time_s,source,local_frame,availability,local_x_m,local_y_m,local_z_m,local_dx,local_dy,local_dz,world_x_m,world_y_m,world_z_m,world_dx,world_dy,world_dz,left_valid,right_valid\n";
-
     protected virtual void OnEnable()
     {
         if (owner != null && owner != this)
@@ -311,188 +120,297 @@ public class PaveTracking : MonoBehaviour
             enabled = false;
             return;
         }
+
         owner = this;
-        rawEyeSource = gazeSource as PaveSranipalEyeSource ?? fallbackGazeSource as PaveSranipalEyeSource;
-        if (rawEyeSource != null) rawEyeSource.RawSampleReceived += RecordRawEyes;
+        rawEyeSource = GazeSource as PaveSranipalEyeSource ?? FallbackGazeSource as PaveSranipalEyeSource;
+        if (rawEyeSource != null)
+        {
+            rawEyeSource.RawSampleReceived += RecordRawEyes;
+        }
     }
 
     protected virtual void Start()
     {
-        if (trackingOrigin == null && main_camera != null) trackingOrigin = main_camera.transform.parent;
-        if (trackingOrigin == null)
+        if (TrackingOrigin == null && GazeCamera != null)
+        {
+            TrackingOrigin = GazeCamera.transform.parent;
+        }
+
+        if (TrackingOrigin == null)
+        {
             Debug.LogWarning("Tracking origin is unassigned; pose world coordinates use identity tracking space.", this);
+        }
     }
 
     protected virtual void Update()
     {
-        S_activateLogging = activateLogging;
-        trackEyesCallback = trackEyes;
-        if (gazeSource != null) gazeSource.enabled = trackEyes;
-        if (fallbackGazeSource != null) fallbackGazeSource.enabled = trackEyes;
-
-        if (trackHead)
+        if (GazeSource != null)
         {
-            SimPoseSample sample = head.Read(trackingOrigin);
-            headTracker.headTimestamp = sample.IsValid ? sample.TimestampSeconds : -1;
-            headTracker.headPosition = sample.WorldPose.position;
-            headTracker.headRotation = sample.WorldPose.rotation;
+            GazeSource.enabled = TrackEyes;
+        }
+
+        if (FallbackGazeSource != null)
+        {
+            FallbackGazeSource.enabled = TrackEyes;
+        }
+
+        if (!TrackHead)
+        {
+            HeadPose = default;
+        }
+
+        if (!TrackLeftController)
+        {
+            LeftControllerPose = default;
+        }
+
+        if (!TrackRightController)
+        {
+            RightControllerPose = default;
+        }
+
+        trackerPoses.Clear();
+        if (TrackHead)
+        {
+            SimPoseSample sample = head.Read(TrackingOrigin);
+            HeadPose = sample;
             RecordPose("HMD_Tracking", sample);
         }
-        if (trackLeftController)
+
+        if (TrackLeftController)
         {
-            SimPoseSample sample = left.Read(trackingOrigin);
-            leftControllerTracker.leftControllerTimestamp = sample.IsValid ? sample.TimestampSeconds : -1;
-            leftControllerTracker.leftControllerPosition = sample.WorldPose.position;
-            leftControllerTracker.leftControllerRotation = sample.WorldPose.rotation;
+            SimPoseSample sample = left.Read(TrackingOrigin);
+            LeftControllerPose = sample;
             RecordPose("LeftController_Tracking", sample);
         }
-        if (trackRightController)
+
+        if (TrackRightController)
         {
-            SimPoseSample sample = right.Read(trackingOrigin);
-            rightControllerTracker.rightControllerTimestamp = sample.IsValid ? sample.TimestampSeconds : -1;
-            rightControllerTracker.rightControllerPosition = sample.WorldPose.position;
-            rightControllerTracker.rightControllerRotation = sample.WorldPose.rotation;
+            SimPoseSample sample = right.Read(TrackingOrigin);
+            RightControllerPose = sample;
             RecordPose("RightController_Tracking", sample);
         }
-        foreach (TrackerLog binding in usedTrackers)
+
+        foreach (TrackerBinding binding in Trackers)
         {
-            if (!binding.used) continue;
-            if (!trackers.TryGetValue(binding.pos, out SimXrPoseReader reader))
+            if (!binding.Enabled)
             {
-                reader = new SimXrPoseReader((InputDeviceCharacteristics)binding.pos);
-                trackers.Add(binding.pos, reader);
+                continue;
             }
-            SimPoseSample sample = reader.Read(trackingOrigin);
-            if (!trackerTrackers.TryGetValue(binding.pos.ToString(), out TrackerTracking state))
-                trackerTrackers.Add(binding.pos.ToString(), state = new TrackerTracking());
-            state.trackerTimestamp = sample.IsValid ? sample.TimestampSeconds : -1;
-            state.trackerPosition = sample.WorldPose.position;
-            state.trackerRotation = sample.WorldPose.rotation;
-            RecordPose(binding.pos.ToString(), sample);
+
+            if (!trackers.TryGetValue(binding.Role, out SimXrPoseReader reader))
+            {
+                reader = new SimXrPoseReader((InputDeviceCharacteristics)binding.Role);
+                trackers.Add(binding.Role, reader);
+            }
+
+            SimPoseSample sample = reader.Read(TrackingOrigin);
+            trackerPoses[binding.Role] = sample;
+            RecordPose(binding.Role.ToString(), sample);
         }
     }
 
     protected virtual void LateUpdate()
     {
         ResetGaze();
-        if (!trackEyes) { EyeStatus = "Disabled"; return; }
+        if (!TrackEyes)
+        {
+            EyeStatus = "Disabled";
+            if (GazeDebugObject != null)
+            {
+                GazeDebugObject.SetActive(false);
+            }
+
+            return;
+        }
+
         SimGazeSample sample = default;
-        bool valid = gazeSource != null && gazeSource.TryGetLatest(maximumGazeAgeSeconds, out sample);
-        if (!valid && fallbackGazeSource != null)
-            valid = fallbackGazeSource.TryGetLatest(maximumGazeAgeSeconds, out sample);
-        gazeValid = valid;
+        bool valid = GazeSource != null && GazeSource.TryGetLatest(MaximumGazeAgeSeconds, out sample);
+        if (!valid && FallbackGazeSource != null)
+        {
+            valid = FallbackGazeSource.TryGetLatest(MaximumGazeAgeSeconds, out sample);
+        }
+
+        GazeValid = valid;
         ActiveGazeSource = valid ? sample.Source : "None";
         EyeStatus = valid ? "Valid" : "Unavailable or stale";
         LeftEyeValidity = valid ? sample.LeftEyeValid : null;
         RightEyeValidity = valid ? sample.RightEyeValid : null;
         // Unknown per-eye validity must not be presented as a measured true value.
-        eyeValid = LeftEyeValidity == true;
-        eyeValid2 = RightEyeValidity == true;
+        LeftEyeValid = LeftEyeValidity == true;
+        RightEyeValid = RightEyeValidity == true;
         if (valid)
         {
             TrackingROI(sample);
-            if (eyeBall != null)
+            if (GazeDebugObject != null)
             {
-                eyeBall.transform.SetPositionAndRotation(sample.WorldRay.GetPoint(0.5f), Quaternion.LookRotation(sample.WorldRay.direction));
-                eyeBall.SetActive(true);
+                GazeDebugObject.transform.SetPositionAndRotation(sample.WorldRay.GetPoint(0.5f), Quaternion.LookRotation(sample.WorldRay.direction));
+                GazeDebugObject.SetActive(true);
             }
         }
+
+        if (!valid && GazeDebugObject != null)
+        {
+            GazeDebugObject.SetActive(false);
+        }
+
         RecordGaze(sample, valid);
     }
 
     bool CanLog()
     {
-        if (!activateLogging) return false;
-        if (LoggingManager.OutputDirectory != null) return true;
+        if (!EnableLogging)
+        {
+            return false;
+        }
+
+        if (LoggingManager.OutputDirectory != null)
+        {
+            return true;
+        }
+
         if (!warnedMissingLogger)
         {
             Debug.LogWarning("Acquisition is running without a session logger; samples are not being recorded.", this);
             warnedMissingLogger = true;
         }
+
         return false;
     }
 
     void RecordPose(string name, SimPoseSample sample)
     {
-        if (!CanLog()) return;
+        if (!CanLog())
+        {
+            return;
+        }
+
         LoggingManager.CreateNewLog(name, PoseHeader);
-        string values = sample.IsValid ? PoseValues(sample.LocalPose) + "," + PoseValues(sample.WorldPose) : new string(',', 13);
+        string values = sample.IsValid ? PoseValues(sample.LocalPose) + "," + PoseValues(sample.WorldPose) : new string (',', 13);
         LoggingManager.AddToBuffer(name, FormattableString.Invariant($"{sample.TimestampSeconds},{sample.Availability},{values}\n"));
     }
 
-    static string PoseValues(Pose pose)
-        => FormattableString.Invariant($"{pose.position.x},{pose.position.y},{pose.position.z},{pose.rotation.w},{pose.rotation.x},{pose.rotation.y},{pose.rotation.z}");
-
+    static string PoseValues(Pose pose) => FormattableString.Invariant($"{pose.position.x},{pose.position.y},{pose.position.z},{pose.rotation.w},{pose.rotation.x},{pose.rotation.y},{pose.rotation.z}");
     void RecordGaze(SimGazeSample sample, bool valid)
     {
-        if (!CanLog()) return;
+        if (!CanLog())
+        {
+            return;
+        }
+
         LoggingManager.CreateNewLog("Gaze_Tracking", GazeHeader);
-        string values = valid ? RayValues(sample.LocalRay) + "," + RayValues(sample.WorldRay) + "," +
-            sample.LeftEyeValid?.ToString() + "," + sample.RightEyeValid?.ToString() : new string(',', 13);
+        string values = valid ? RayValues(sample.LocalRay) + "," + RayValues(sample.WorldRay) + "," + sample.LeftEyeValid?.ToString() + "," + sample.RightEyeValid?.ToString() : new string (',', 13);
         LoggingManager.AddToBuffer("Gaze_Tracking", FormattableString.Invariant($"{(valid ? sample.TimestampSeconds : Now)},{(valid ? sample.Source : "None")},{(valid ? sample.LocalFrame : "")},{(valid ? "Valid" : "UnavailableOrStale")},{values}\n"));
     }
 
-    static string RayValues(Ray ray)
-        => FormattableString.Invariant($"{ray.origin.x},{ray.origin.y},{ray.origin.z},{ray.direction.x},{ray.direction.y},{ray.direction.z}");
-
+    static string RayValues(Ray ray) => FormattableString.Invariant($"{ray.origin.x},{ray.origin.y},{ray.origin.z},{ray.direction.x},{ray.direction.y},{ray.direction.z}");
     void RecordRawEyes(double time, EyeData data)
     {
-        eyeTracker.EyeData = (time, data);
-        isEyeCallbackWorking = true;
-        if (!CanLog()) return;
-        LoggingManager.CreateNewLog("Eye_Tracking", SIMHeader.eyeHeader);
+        if (!CanLog())
+        {
+            return;
+        }
+
+        LoggingManager.CreateNewLog("Eye_Tracking", EyeCsvHeader);
         var combined = data.verbose_data.combined;
         var l = data.verbose_data.left;
         var r = data.verbose_data.right;
         // Preserve the SDK's native raw axes/mm and device timestamp in this legacy CSV only.
-        object[] values = { time, data.timestamp,
-            combined.eye_data.gaze_direction_normalized.x, combined.eye_data.gaze_direction_normalized.y, combined.eye_data.gaze_direction_normalized.z,
-            combined.eye_data.gaze_origin_mm.x, combined.eye_data.gaze_origin_mm.y, combined.eye_data.gaze_origin_mm.z,
-            combined.convergence_distance_validity, combined.convergence_distance_mm,
-            r.eye_data_validata_bit_mask, r.gaze_direction_normalized.x, r.gaze_direction_normalized.y, r.gaze_direction_normalized.z,
-            r.pupil_diameter_mm, r.eye_openness, r.pupil_position_in_sensor_area.x, r.pupil_position_in_sensor_area.y,
-            l.eye_data_validata_bit_mask, l.gaze_direction_normalized.x, l.gaze_direction_normalized.y, l.gaze_direction_normalized.z,
-            l.pupil_diameter_mm, l.eye_openness, l.pupil_position_in_sensor_area.x, l.pupil_position_in_sensor_area.y };
+        object[] values =
+        {
+            time,
+            data.timestamp,
+            combined.eye_data.gaze_direction_normalized.x,
+            combined.eye_data.gaze_direction_normalized.y,
+            combined.eye_data.gaze_direction_normalized.z,
+            combined.eye_data.gaze_origin_mm.x,
+            combined.eye_data.gaze_origin_mm.y,
+            combined.eye_data.gaze_origin_mm.z,
+            combined.convergence_distance_validity,
+            combined.convergence_distance_mm,
+            r.eye_data_validata_bit_mask,
+            r.gaze_direction_normalized.x,
+            r.gaze_direction_normalized.y,
+            r.gaze_direction_normalized.z,
+            r.pupil_diameter_mm,
+            r.eye_openness,
+            r.pupil_position_in_sensor_area.x,
+            r.pupil_position_in_sensor_area.y,
+            l.eye_data_validata_bit_mask,
+            l.gaze_direction_normalized.x,
+            l.gaze_direction_normalized.y,
+            l.gaze_direction_normalized.z,
+            l.pupil_diameter_mm,
+            l.eye_openness,
+            l.pupil_position_in_sensor_area.x,
+            l.pupil_position_in_sensor_area.y
+        };
         LoggingManager.AddToBuffer("Eye_Tracking", string.Join(",", Array.ConvertAll(values, value => Convert.ToString(value, CultureInfo.InvariantCulture))) + "\n");
     }
 
     void TrackingROI(SimGazeSample sample)
     {
         Ray ray = sample.WorldRay;
-        RaycastHit[] hits = Physics.SphereCastAll(ray, spherecastRadius, 10f, 1 << 10);
-        lookingAtHand = hits.Any(hit => hit.collider.CompareTag("hand_collider"));
-        lookingAtObject = hits.Any(hit => hit.collider.CompareTag("object_collider"));
-        lookingAtTarget = hits.Any(hit => hit.collider.CompareTag("target_collider"));
-        if (!CanLog()) return;
-        LoggingManager.CreateNewLog("ROI", SIMHeader.roiHeader);
+        RaycastHit[] hits = Physics.SphereCastAll(ray, GazeCastRadius, 10f, 1 << 10);
+        LookingAtHand = hits.Any(hit => hit.collider.CompareTag("hand_collider"));
+        LookingAtObject = hits.Any(hit => hit.collider.CompareTag("object_collider"));
+        LookingAtTarget = hits.Any(hit => hit.collider.CompareTag("target_collider"));
+        if (!CanLog())
+        {
+            return;
+        }
+
+        LoggingManager.CreateNewLog("ROI", RoiCsvHeader);
         string properties = string.Join(";", hits.Select(hit => hit.collider.gameObject.name.Replace("\"", "\"\"") + ":" + hit.distance.ToString(CultureInfo.InvariantCulture)));
-        LoggingManager.AddToBuffer("ROI", FormattableString.Invariant($"{sample.TimestampSeconds},{lookingAtHand},{lookingAtObject},{lookingAtTarget},\"{properties}\"\n"));
+        LoggingManager.AddToBuffer("ROI", FormattableString.Invariant($"{sample.TimestampSeconds},{LookingAtHand},{LookingAtObject},{LookingAtTarget},\"{properties}\"\n"));
     }
 
     void ResetGaze()
     {
-        gazeValid = eyeValid = eyeValid2 = lookingAtHand = lookingAtObject = lookingAtTarget = false;
+        GazeValid = LeftEyeValid = RightEyeValid = LookingAtHand = LookingAtObject = LookingAtTarget = false;
         LeftEyeValidity = RightEyeValidity = null;
-        if (eyeBall != null) eyeBall.SetActive(false);
     }
 
     protected virtual void OnDisable()
     {
-        if (rawEyeSource != null) rawEyeSource.RawSampleReceived -= RecordRawEyes;
-        if (owner != this) return;
-        if (gazeSource != null) gazeSource.enabled = false;
-        if (fallbackGazeSource != null) fallbackGazeSource.enabled = false;
+        if (rawEyeSource != null)
+        {
+            rawEyeSource.RawSampleReceived -= RecordRawEyes;
+        }
+
+        if (owner != this)
+        {
+            return;
+        }
+
+        if (GazeSource != null)
+        {
+            GazeSource.enabled = false;
+        }
+
+        if (FallbackGazeSource != null)
+        {
+            FallbackGazeSource.enabled = false;
+        }
+
         ResetGaze();
+        if (GazeDebugObject != null)
+        {
+            GazeDebugObject.SetActive(false);
+        }
+
         EyeStatus = "Disabled";
         ActiveGazeSource = "None";
-        isEyeCallbackWorking = trackEyesCallback = S_activateLogging = false;
+        HeadPose = LeftControllerPose = RightControllerPose = default;
+        trackerPoses.Clear();
         owner = null;
     }
 
     public void CalibrateEyes()
     {
         if (rawEyeSource == null || !rawEyeSource.Calibrate())
+        {
             Debug.LogWarning("Eye calibration requires an active supported SRanipal source. For OpenXR, calibrate through the headset runtime.", this);
+        }
     }
-
 }

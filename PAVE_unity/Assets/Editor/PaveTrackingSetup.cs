@@ -14,11 +14,15 @@ using ViveSR.anipal.Eye;
 /// or writes rig transforms. Use the menu after adding a new scene or changing its XR rig.</summary>
 public static class PaveTrackingSetup
 {
-    public static readonly string[] ResearchScenes = {
-        "Assets/Scenes/HIL-IL_TAC_VR.unity", "Assets/Scenes/HIL-IL_VR.unity", "Assets/Scenes/PastaBox.unity",
-        "Assets/Scenes/Scenes_LR/Stage1.unity", "Assets/Scenes/Scenes_LR/Stage2.unity", "Assets/Scenes/Scenes_LR/Stage3.unity"
+    public static readonly string[] ResearchScenes =
+    {
+        "Assets/Scenes/HIL-IL_TAC_VR.unity",
+        "Assets/Scenes/HIL-IL_VR.unity",
+        "Assets/Scenes/PastaBox.unity",
+        "Assets/Scenes/Scenes_LR/Stage1.unity",
+        "Assets/Scenes/Scenes_LR/Stage2.unity",
+        "Assets/Scenes/Scenes_LR/Stage3.unity"
     };
-
     [MenuItem("Tools/PAVE/Configure research tracking in current scene")]
     public static void ConfigureCurrentScene()
     {
@@ -26,44 +30,74 @@ public static class PaveTrackingSetup
         var components = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<PaveTracking>(true));
         foreach (PaveTracking tracking in components)
         {
-            Camera camera = tracking.main_camera == null ? ResolveCamera(scene) : tracking.main_camera.GetComponent<Camera>();
+            Camera camera = tracking.GazeCamera == null ? ResolveCamera(scene) : tracking.GazeCamera.GetComponent<Camera>();
             if (camera == null || camera.transform.parent == null)
-                throw new InvalidOperationException("Assign a tracked main_camera and its tracking-space parent on " + tracking.name);
+            {
+                throw new InvalidOperationException("Assign a tracked GazeCamera and its tracking-space parent on " + tracking.name);
+            }
+
             Undo.RecordObject(tracking, "Configure research tracking");
             // Preserve the study's existing gaze camera binding. Pose recording uses a separate reference.
-            tracking.trackingOrigin = camera.transform.parent;
-            tracking.trackHead = tracking.trackLeftController = tracking.trackRightController = true;
+            tracking.TrackingOrigin = camera.transform.parent;
+            tracking.TrackHead = tracking.TrackLeftController = tracking.TrackRightController = true;
             // Observe only roles already bound to scene pose drivers; never infer a study role from device order.
-            foreach (PaveTracking.position role in BoundTrackerRoles(scene))
+            foreach (PaveTracking.TrackerRole role in BoundTrackerRoles(scene))
             {
-                var binding = tracking.usedTrackers.Find(item => item.pos == role);
-                if (binding == null) tracking.usedTrackers.Add(new PaveTracking.TrackerLog(role) { used = true });
-                else binding.used = true;
+                var binding = tracking.Trackers.Find(item => item.Role == role);
+                if (binding == null)
+                {
+                    tracking.Trackers.Add(new PaveTracking.TrackerBinding(role) { Enabled = true });
+                }
+                else
+                {
+                    binding.Enabled = true;
+                }
             }
+
             // Generic OpenXR gaze has its own tracking-space reference. It never changes HTC's head-local reference.
             var openXr = tracking.GetComponent<SimOpenXrGazeSource>();
-            if (openXr == null) openXr = Undo.AddComponent<SimOpenXrGazeSource>(tracking.gameObject);
-            openXr.trackingOrigin = tracking.trackingOrigin;
-            openXr.enabled = tracking.trackEyes;
+            if (openXr == null)
+            {
+                openXr = Undo.AddComponent<SimOpenXrGazeSource>(tracking.gameObject);
+            }
+
+            openXr.TrackingOrigin = tracking.TrackingOrigin;
+            openXr.enabled = tracking.TrackEyes;
             EditorUtility.SetDirty(openXr);
             // Preserve the existing SRanipal camera/calibration. Generic gaze is a separately identified fallback.
-            if (tracking.trackEyes)
+            if (tracking.TrackEyes)
             {
-                if (tracking.main_camera == null)
+                if (tracking.GazeCamera == null)
+                {
                     throw new InvalidOperationException("Preserve and assign the study's existing gaze camera before migration.");
+                }
+
                 var vendor = tracking.GetComponent<PaveSranipalEyeSource>();
-                if (vendor == null) vendor = Undo.AddComponent<PaveSranipalEyeSource>(tracking.gameObject);
-                if (vendor.headset == null) vendor.headset = tracking.main_camera.transform;
-                vendor.framework = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<SRanipal_Eye_Framework>(true)).FirstOrDefault();
+                if (vendor == null)
+                {
+                    vendor = Undo.AddComponent<PaveSranipalEyeSource>(tracking.gameObject);
+                }
+
+                if (vendor.Headset == null)
+                {
+                    vendor.Headset = tracking.GazeCamera.transform;
+                }
+
+                vendor.Framework = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<SRanipal_Eye_Framework>(true)).FirstOrDefault();
                 vendor.enabled = true;
-                tracking.gazeSource = vendor;
-                tracking.fallbackGazeSource = openXr;
+                tracking.GazeSource = vendor;
+                tracking.FallbackGazeSource = openXr;
                 EditorUtility.SetDirty(vendor);
             }
-            else tracking.gazeSource = openXr;
+            else
+            {
+                tracking.GazeSource = openXr;
+            }
+
             EditorUtility.SetDirty(tracking);
             PrefabUtility.RecordPrefabInstancePropertyModifications(tracking);
         }
+
         foreach (var framework in scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<SRanipal_Eye_Framework>(true)))
         {
             // The provider owns startup after detecting compatible hardware. Meta/no-headset runs must not start HTC's SDK.
@@ -72,38 +106,52 @@ public static class PaveTrackingSetup
             EditorUtility.SetDirty(framework);
             PrefabUtility.RecordPrefabInstancePropertyModifications(framework);
         }
+
         EditorSceneManager.MarkSceneDirty(scene);
     }
 
     static Camera ResolveCamera(Scene scene)
     {
-        Camera[] candidates = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Camera>(true))
-            .Where(camera => camera.gameObject.activeInHierarchy && camera.CompareTag("MainCamera") &&
-                camera.GetComponents<MonoBehaviour>().Any(component => component != null && component.GetType().Name == "TrackedPoseDriver")).ToArray();
+        Camera[] candidates = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Camera>(true)).Where(camera => camera.gameObject.activeInHierarchy && camera.CompareTag("MainCamera") && camera.GetComponents<MonoBehaviour>().Any(component => component != null && component.GetType().Name == "TrackedPoseDriver")).ToArray();
         if (candidates.Length != 1)
+        {
             throw new InvalidOperationException("Expected one active tracked MainCamera in " + scene.path + "; found " + candidates.Length);
+        }
+
         return candidates[0];
     }
 
-    static IEnumerable<PaveTracking.position> BoundTrackerRoles(Scene scene)
+    static IEnumerable<PaveTracking.TrackerRole> BoundTrackerRoles(Scene scene)
     {
-        var roles = new HashSet<PaveTracking.position>();
+        var roles = new HashSet<PaveTracking.TrackerRole>();
         foreach (var component in scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<MonoBehaviour>(true)))
         {
-            if (component == null || component.GetType().Name != "TrackedPoseDriver") continue;
+            if (component == null || component.GetType().Name != "TrackedPoseDriver")
+            {
+                continue;
+            }
+
             var serialized = new SerializedObject(component);
             var reference = serialized.FindProperty("m_PositionInput.m_Reference")?.objectReferenceValue as InputActionReference;
-            if (reference == null || reference.action == null) continue;
+            if (reference == null || reference.action == null)
+            {
+                continue;
+            }
+
             foreach (var binding in reference.action.bindings)
             {
-                foreach (PaveTracking.position role in Enum.GetValues(typeof(PaveTracking.position)))
+                foreach (PaveTracking.TrackerRole role in Enum.GetValues(typeof(PaveTracking.TrackerRole)))
                 {
                     string usage = role.ToString().Substring("Tracker".Length);
                     string pathUsage = System.Text.RegularExpressions.Regex.Replace(usage, "([a-z])([A-Z])", "$1 $2");
-                    if (binding.path != null && binding.path.Contains("<XRViveTracker>{" + pathUsage + "}")) roles.Add(role);
+                    if (binding.path != null && binding.path.Contains("<XRViveTracker>{" + pathUsage + "}"))
+                    {
+                        roles.Add(role);
+                    }
                 }
             }
         }
+
         return roles;
     }
 
@@ -111,7 +159,13 @@ public static class PaveTrackingSetup
     public static void ConfigureResearchScenes()
     {
         for (int i = 0; i < SceneManager.sceneCount; i++)
-            if (SceneManager.GetSceneAt(i).isDirty) throw new InvalidOperationException("Save open scene changes before batch setup.");
+        {
+            if (SceneManager.GetSceneAt(i).isDirty)
+            {
+                throw new InvalidOperationException("Save open scene changes before batch setup.");
+            }
+        }
+
         var setup = EditorSceneManager.GetSceneManagerSetup();
         try
         {
@@ -122,22 +176,38 @@ public static class PaveTrackingSetup
                 EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
                 Debug.Log("Configured read-only acquisition: " + path);
             }
+
             ConfigurePcProfiles();
         }
-        finally { EditorSceneManager.RestoreSceneManagerSetup(setup); }
+        finally
+        {
+            EditorSceneManager.RestoreSceneManagerSetup(setup);
+        }
     }
 
     public static void ConfigurePcProfiles()
     {
         OpenXRSettings settings = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
-        string[] names = { "OculusTouchControllerProfile", "MetaQuestTouchPlusControllerProfile", "MetaQuestTouchProControllerProfile",
-            "HTCViveControllerProfile", "HTCViveTrackerProfile", "EyeGazeInteraction" };
+        string[] names =
+        {
+            "OculusTouchControllerProfile",
+            "MetaQuestTouchPlusControllerProfile",
+            "MetaQuestTouchProControllerProfile",
+            "HTCViveControllerProfile",
+            "HTCViveTrackerProfile",
+            "EyeGazeInteraction"
+        };
         foreach (var feature in settings.GetFeatures())
         {
-            if (feature == null || !names.Contains(feature.GetType().Name)) continue;
+            if (feature == null || !names.Contains(feature.GetType().Name))
+            {
+                continue;
+            }
+
             feature.enabled = true;
             EditorUtility.SetDirty(feature);
         }
+
         EditorUtility.SetDirty(settings);
         AssetDatabase.SaveAssets();
     }

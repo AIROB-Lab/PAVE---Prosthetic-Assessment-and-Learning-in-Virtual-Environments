@@ -10,18 +10,20 @@ using UnityEngine;
 public class ArrowTiltAtTop : MonoBehaviour
 {
     public bool tilt = true;
-
     [Tooltip("Degrees around the disc's own axis. Flip the sign if it turns the wrong way.")]
     public float tiltDegrees = -45f;
-
     Quaternion baseLocal;
     readonly List<Transform> shelves = new List<Transform>();
-
     void Start()
     {
         baseLocal = transform.localRotation;
         foreach (var t in FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-            if (t.name.StartsWith("level_")) shelves.Add(t);
+        {
+            if (t.name.StartsWith("level_"))
+            {
+                shelves.Add(t);
+            }
+        }
     }
 
     // LateUpdate, so this wins against whatever drives the forearm each frame.
@@ -29,9 +31,7 @@ public class ArrowTiltAtTop : MonoBehaviour
     {
         // Pre-multiplying in local space turns the arrow about its PARENT's Y axis,
         // which is the disc's normal. So it stays flat on the face.
-        transform.localRotation = (tilt && NearestShelfIsTop())
-            ? Quaternion.Euler(0f, tiltDegrees, 0f) * baseLocal
-            : baseLocal;
+        transform.localRotation = (tilt && NearestShelfIsTop()) ? Quaternion.Euler(0f, tiltDegrees, 0f) * baseLocal : baseLocal;
     }
 
     bool NearestShelfIsTop()
@@ -41,8 +41,13 @@ public class ArrowTiltAtTop : MonoBehaviour
         foreach (var s in shelves)
         {
             float d = (s.position - transform.position).sqrMagnitude;
-            if (d < best) { best = d; nearest = s; }
+            if (d < best)
+            {
+                best = d;
+                nearest = s;
+            }
         }
+
         return nearest != null && nearest.name == "level_top";
     }
 }

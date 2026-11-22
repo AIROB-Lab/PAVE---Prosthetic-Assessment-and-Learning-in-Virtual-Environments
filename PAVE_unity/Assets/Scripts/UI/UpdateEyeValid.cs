@@ -12,6 +12,7 @@ public class UpdateEyeValid : MonoBehaviour
         label = GetComponent<TextMeshProUGUI>();
         tracking = FindFirstObjectByType<PaveTracking>();
     }
+
     void Update()
     {
         string left = tracking != null ? tracking.LeftEyeValidity?.ToString() ?? "n/a" : "n/a";

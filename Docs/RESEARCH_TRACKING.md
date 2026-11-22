@@ -33,3 +33,9 @@ Software verification on 2026-11-22:
 - A TAC Play Mode run with zero connected XR devices reported unavailable gaze and no registered HTC callback. Four tracking CSV files each contained 4,097 data rows plus a header, with consistent column counts. XR startup was restored to enabled after the check.
 
 Live Meta / HTC pose accuracy, tracker reconnection, eye calibration and hardware sampling require device validation. These software checks do not establish physical measurement accuracy. No new assessment scenes were added.
+
+## Cleanup and migration checks
+
+The follow-up cleanup standardizes public acquisition/provider names and uses FormerlySerializedAs for stored settings, including the original HTC camera, gaze cast radius and tracker roles. It replaces unused pose/eye wrapper buffers with typed samples, removes unused headers and empty callbacks, and formats the project-owned PAVE/student/SIM scripts. Public naming and migration conventions are in CODE_STYLE.md.
+
+After migration, all six scenes loaded with zero missing scripts. The stored gaze camera, cast radius, tracker roles and provider references were checked in Unity before saving. Exactly one acquisition adapter is active per scene: the extra HIL object is inactive, and the redundant base components in Stage1/Stage3 are already disabled. Existing UDP enable flags and per-scene ports were retained (including Stage1's disabled receiver and Stage2's port 1100).
