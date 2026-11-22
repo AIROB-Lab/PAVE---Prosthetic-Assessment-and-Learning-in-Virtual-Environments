@@ -11,3 +11,5 @@ Do not hand-copy mujoco.dll into Assets or edit dependencies to personal drive p
 The integration preserves the Unity 6 migration, kitchen Stage3 content and the later HIL shelf/ghost/trial changes. Conflicting Unity settings/materials favor the Unity 6 baseline; PastaBox retains the preserved Unity 6 baseline; the incoming student scene contained none of the shared prosthesis controllers. HIL-IL_VR uses the later shelf/ghost scene because generated mesh IDs made a line merge unsafe. Scene import/reference checks are still required before declaring behavioral equivalence.
 
 Windows player builds retain the existing URP compatibility rendering mode. The Standalone target explicitly declares URP_COMPATIBILITY_MODE, required by Unity 6000.3's URP build validation. The runtime scripts must not import UnityEditor namespaces; those are available only in the Editor.
+
+The default Windows build entry is Assets/Scenes/HIL-IL_TAC_VR.unity. The legacy SampleScene is retained as source content but is not the default build entry; its imported XR Hands prefab reference is unresolved. Select another research scene deliberately when building a different study.
