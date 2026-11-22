@@ -7,7 +7,6 @@ using TMPro;
 using UnityEngine.SceneManagement;
 using Unity.IO.LowLevel.Unsafe;
 using System;
-using UnityEditor.PackageManager;
 using UnityEngine.Rendering;
 using Unity.Burst.Intrinsics;
 
