@@ -1,0 +1,3 @@
+[submodule "Dependencies/SIM"]
+	path = Dependencies/SIM
+	url = https://github.com/AIROB-Lab/SIM---Streamlined-Input-Manager-UDP.git
