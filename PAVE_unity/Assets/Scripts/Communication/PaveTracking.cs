@@ -1,76 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
+using System.Globalization;
+using System.Linq;
+using Sim;
+using Sim.Tracking;
 using UnityEngine;
 using UnityEngine.XR;
 using ViveSR.anipal.Eye;
-using System.Text;
 
-using static UnityEngine.XR.OpenXR.Features.Interactions.HTCViveTrackerProfile;
-using System.Collections;
-using Unity.VisualScripting;
-using System.Linq;
-using UnityEngine.Android;
-using static PaveTracking;
-
-// ********************************************************************************************************************
-//  USAGE
-//
-// 1. Select in the Unity inspector which devices you want to have tracked.
-// 2. Select whether you want to log your tracking or not. If logging is activated, all tracked devices are being logged.
-//
-// 3. Tracking information for tracked devices can be accessed while the program is running through the properties of
-//      - headTracker
-//      - leftControllerTracker
-//      - rightControllerTracker
-//      - eyeTracker
-//      and
-//      - all TrackerTracking instances contained in the trackerTrackers dictionary (accessible thorugh the name of the tracker as a key)
-//  4. Logged information is written in the folder ./data
-
-//  -------------------------------------------------------------------------------------------------------------------
-
-//  UNDERSTAND THE INFORMATION that is being logged with this script.
-//
-//  WHAT is being logged?
-//
-//      Inside Update function:
-//          - Position + Rotation of the HEADSET
-//          - Position + Rotation of the LEFT CONTROLLER
-//          - Position + Rotation of the RIGHT CONTROLLER
-//          - Position + Rotation of the different VIVE TRACKERS
-//
-//      With 120Hz using SRanipal EyeFramework:
-//          - EYETACKING data
-//
-//  WHAT POSITION is logged?
-//
-//       Headset:    MainCamera.transform = Headset.position
-//       Controllers', Headset's and Trackers' positions are logged in the real world coordinate system you
-//       can see on the floor while the game is loading up. It is derived by the position
-//       the boundaries you have marked with your controller in the room when setting up SteamVR.
-//       The posiiton in the world space is therefore XROrigin.transform + CameraOffset.transform +
-//       Position of the controller/headset/tracker (equivalent to their position in Unity!)
-//
-//       x-Axis: positive towards the base stations (thumb)
-//       z-Axis: positive towards the left when looking at the base stations (pointing finger)
-//       y-Axis: positive towards the top (middle finger)
-//          --> LEFT-HANDED COORDINATE SYSTEM
-//
-//
-//  WHAT EYETRACKING data is logged?
-//
-//      - System timestamp (unix) & timestamp from the SRanipal Eye Framework (since start of application?)
-//      - Data from the Left Eye, the Right Eye and Combined Eye Data
-//      - The eyetracking gaze direction is inside a right-handed coordinate system with z pointing to the front, x to the side and y to the top
-//
-// ********************************************************************************************************************
-
-
-// class needed for letting user choose from Unity inspector which trackers to track
-
-/// <summary>Optional XR/eye acquisition. No UDP sockets or hand/task behavior.</summary>
+/// <summary>PAVE research acquisition and recording; Unity XR components own movement.
+/// Generic pose/gaze acquisition lives in SIM, HTC native lifecycle in its dedicated adapter.
+/// Legacy public fields retain their scene identities. Task ROI labels and CSV schemas stay here.</summary>
 public class PaveTracking : MonoBehaviour
 {
     public class HeadTracking
@@ -310,401 +250,249 @@ public class PaveTracking : MonoBehaviour
 
     }
 
-    //log bools and UDP port
+
+    [Tooltip("Record enabled acquisition channels into the current PAVE session.")]
     public bool activateLogging;
-    public static bool S_activateLogging;
-
-    public static bool isEyeCallbackWorking;
-
-
     public bool trackEyes;
-    public static bool trackEyesCallback;
-    public static int last_eyeData_size = 100;
-
     public bool trackHead;
     public bool trackLeftController;
     public bool trackRightController;
     public List<TrackerLog> usedTrackers = new List<TrackerLog>();
-
-
-    private static bool eye_callback_registered = false;
-    // Keep the native callback delegate rooted for its entire registration lifetime.
-    private static readonly SRanipal_Eye.CallbackBasic eyeCallbackDelegate = EyeCallback;
-
-    private static readonly object eyeLock = new object();
-
-    // Cone cast would be better, but good enough with relatively fixed distance to regions of interest
-    public float spherecastRadius;
-
-
-    // sphere that follows eye
+    [Tooltip("XR Origin camera-offset transform, the parent space of tracked camera/controllers.")]
+    public Transform trackingOrigin;
+    [Tooltip("Preferred eye provider. HTC raw data remains available through the separate SDK adapter.")]
+    public SimGazeSource gazeSource;
+    [Tooltip("Optional combined-gaze provider when the preferred source has no fresh sample.")]
+    public SimGazeSource fallbackGazeSource;
+    [Min(0.01f)] public float maximumGazeAgeSeconds = 0.25f;
+    [Min(0)] public float spherecastRadius;
+    [Tooltip("Optional gaze debug sphere; never assign the headset, controller or prosthesis.")]
     public GameObject eyeBall;
-
-    // camera reference
     public GameObject main_camera;
 
-    // private static double lastUpdateTime = 0;
-
-    // devices
-    private static List<InputDevice> headDevices = new List<InputDevice>();
-    private static List<InputDevice> rightControllerDevices = new List<InputDevice>();
-    private static List<InputDevice> leftControllerDevices = new List<InputDevice>();
-    private static List<InputDevice> trackDevices = new List<InputDevice>();
-
-    // tracking instances
+    // Compatibility properties for existing study displays. Measurements are observations only.
+    public static bool S_activateLogging;
+    public static bool isEyeCallbackWorking;
+    public static bool trackEyesCallback;
+    public static int last_eyeData_size = 100;
+    static readonly object eyeLock = new object();
     public static HeadTracking headTracker = new HeadTracking();
     public static LeftControllerTracking leftControllerTracker = new LeftControllerTracking();
     public static RightControllerTracking rightControllerTracker = new RightControllerTracking();
     public static EyeTracking eyeTracker = new EyeTracking();
     public static Dictionary<string, TrackerTracking> trackerTrackers = new Dictionary<string, TrackerTracking>();
+    public static double Now => SimClock.Now;
+    public static bool lookingAtHand { get; private set; }
+    public static bool lookingAtObject { get; private set; }
+    public static bool lookingAtTarget { get; private set; }
+    public static bool eyeValid { get; private set; }
+    public static bool eyeValid2 { get; private set; }
+    public static bool gazeValid { get; private set; }
+    public static string EyeStatus { get; private set; } = "Disabled";
+    public static string ActiveGazeSource { get; private set; } = "None";
+    public bool? LeftEyeValidity { get; private set; }
+    public bool? RightEyeValidity { get; private set; }
 
+    readonly SimXrPoseReader head = new SimXrPoseReader(InputDeviceCharacteristics.HeadMounted);
+    readonly SimXrPoseReader left = new SimXrPoseReader(InputDeviceCharacteristics.Controller | InputDeviceCharacteristics.Left);
+    readonly SimXrPoseReader right = new SimXrPoseReader(InputDeviceCharacteristics.Controller | InputDeviceCharacteristics.Right);
+    readonly Dictionary<position, SimXrPoseReader> trackers = new Dictionary<position, SimXrPoseReader>();
+    PaveSranipalEyeSource rawEyeSource;
+    static PaveTracking owner;
+    bool warnedMissingLogger;
+    const string PoseHeader = "host_time_s,availability,local_x_m,local_y_m,local_z_m,local_qw,local_qx,local_qy,local_qz,world_x_m,world_y_m,world_z_m,world_qw,world_qx,world_qy,world_qz\n";
+    const string GazeHeader = "host_time_s,source,local_frame,availability,local_x_m,local_y_m,local_z_m,local_dx,local_dy,local_dz,world_x_m,world_y_m,world_z_m,world_dx,world_dy,world_dz,left_valid,right_valid\n";
 
-    //tracking buffer
-
-    // udp buffer
-
-    // init of the vr devices
-    // initialization needs to be delayed a little (so that all devices are registered)
-    // this bool is set to true as soon as init is done
-    private static bool vrInitDone = false;
-
-
-    // Now - Use the Windows Stopwatch class to obtain precise timestamps
-    public static double Now => Sim.SimClock.Now;
-
-    public static bool lookingAtHand { get; private set; } = false;
-    public static bool lookingAtObject { get; private set; } = false;
-    public static bool lookingAtTarget { get; private set; } = false;
-    public static bool eyeValid { get; private set; } = false;
-    public static bool eyeValid2 { get; private set; } = false;
-
-    // initialize the devices such that this is only done once per program start
-    // called within Start()
-    private void initDevices()
+    protected virtual void OnEnable()
     {
-        // only for debugging purposes / overview of VR devices
-        //var inputDevices = new List<UnityEngine.XR.InputDevice>();
-        //InputDevices.GetDevices(inputDevices);
-
-        //foreach (var device in inputDevices)
-        //{
-        //    UnityEngine.Debug.Log(string.Format("Device found with name '{0}' and role '{1}'", device.name, device.characteristics.ToString()));
-        //}
-
-        headDevices.Clear(); leftControllerDevices.Clear(); rightControllerDevices.Clear(); trackDevices.Clear();
-        var desiredCharacteristics = InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Left | InputDeviceCharacteristics.Controller;
-        InputDevices.GetDevicesWithCharacteristics(desiredCharacteristics, leftControllerDevices);
-        desiredCharacteristics = InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Right | InputDeviceCharacteristics.Controller;
-        InputDevices.GetDevicesWithCharacteristics(desiredCharacteristics, rightControllerDevices);
-        desiredCharacteristics = InputDeviceCharacteristics.HeadMounted;
-        InputDevices.GetDevicesWithCharacteristics(desiredCharacteristics, headDevices);
-        InputDevices.GetDevicesAtXRNode(XRNode.HardwareTracker, trackDevices);
-
-        // we want one dict entry for every used tracker
-        for (int i = 0; i < usedTrackers.Count; i++)
+        if (owner != null && owner != this)
         {
-            if (usedTrackers[i].used)
-            {
-                if (!trackerTrackers.ContainsKey(usedTrackers[i].pos.ToString())) trackerTrackers.Add(usedTrackers[i].pos.ToString(), new TrackerTracking());
-            }
+            Debug.LogWarning("Only one PAVE acquisition adapter may own the legacy static study state.", this);
+            enabled = false;
+            return;
         }
-
-        // How to access a specific tracker: InputDevices.GetDevicesWithCharacteristics((InputDeviceCharacteristics) 0x20000u, trackDevices);
-        vrInitDone = true;
+        owner = this;
+        rawEyeSource = gazeSource as PaveSranipalEyeSource ?? fallbackGazeSource as PaveSranipalEyeSource;
+        if (rawEyeSource != null) rawEyeSource.RawSampleReceived += RecordRawEyes;
     }
-
-    // initialize for Udp
-
-    //Recursive CallBack!
-
 
     protected virtual void Start()
     {
-        S_activateLogging = activateLogging;
-
-        if (S_activateLogging)
-        {
-            // adds header for all used trackers
-            for (int i = 0; i < usedTrackers.Count; i++)
-            {
-                if (usedTrackers[i].used)
-                {
-                    LoggingManager.addTracker(usedTrackers[i].pos.ToString());
-                }
-            }
-            LoggingManager.CreateNewLog(fileName: "Eye_Tracking", header: SIMHeader.eyeHeader, logRate: 5f);
-            LoggingManager.CreateNewLog(fileName: "RightController_Tracking", header: SIMHeader.rightControllerHeader, logRate: 5f);
-            LoggingManager.CreateNewLog(fileName: "LeftController_Tracking", header: SIMHeader.leftControllerHeader, logRate: 5f);
-            LoggingManager.CreateNewLog(fileName: "Tracker_Tracking", header: SIMHeader.trackerHeader, logRate: 5f);
-            LoggingManager.CreateNewLog(fileName: "HMD_Tracking", header: SIMHeader.headHeader, logRate: 5f);
-            LoggingManager.CreateNewLog(fileName: "ROI", header: SIMHeader.roiHeader, logRate: 5f);
-        }
-
-        //init devices
-        InvokeRepeating("initDevices", 0f, 2f);
-
-        //start listening over udp port 11000
-
-
-        double imBlockTimestamp = (double)Stopwatch.GetTimestamp() / Stopwatch.Frequency;
-        UnityEngine.Debug.Log("Starting the application at " + imBlockTimestamp);
+        if (trackingOrigin == null && main_camera != null) trackingOrigin = main_camera.transform.parent;
+        if (trackingOrigin == null)
+            Debug.LogWarning("Tracking origin is unassigned; pose world coordinates use identity tracking space.", this);
     }
 
     protected virtual void Update()
     {
-        // make logEye bool accessible for Eye data callback function
+        S_activateLogging = activateLogging;
         trackEyesCallback = trackEyes;
-        if (!trackEyes) { Release(); eyeValid = false; eyeValid2 = false; lookingAtHand = lookingAtObject = lookingAtTarget = false; }
+        if (gazeSource != null) gazeSource.enabled = trackEyes;
+        if (fallbackGazeSource != null) fallbackGazeSource.enabled = trackEyes;
 
-        // Eyetracking with SRanipal
-        if (trackEyes && SRanipal_Eye_Framework.Status == SRanipal_Eye_Framework.FrameworkStatus.WORKING)
+        if (trackHead)
         {
-            if (SRanipal_Eye_Framework.Instance.EnableEyeDataCallback == true && eye_callback_registered == false)
-            {
-                SRanipal_Eye.WrapperRegisterEyeDataCallback(Marshal.GetFunctionPointerForDelegate(eyeCallbackDelegate));
-                eye_callback_registered = true;
-            }
-            else if (SRanipal_Eye_Framework.Instance.EnableEyeDataCallback == false && eye_callback_registered == true)
-            {
-                SRanipal_Eye.WrapperUnRegisterEyeDataCallback(Marshal.GetFunctionPointerForDelegate(eyeCallbackDelegate));
-                eye_callback_registered = false;
-            }
-
-            foreach ((double, EyeData) eyeTimeData in eyeTracker.Last_eyeDatas)
-            {
-                if (vrInitDone && eye_callback_registered && eyeTimeData.Item2.verbose_data.combined.eye_data.GetValidity(SingleEyeDataValidity.SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY)) TrackingROI(eyeTimeData.Item1, eyeTimeData.Item2);
-            }
-
-            // Debug view eye tracking
-            if (eyeBall != null) { eyeBall.transform.position = eyeTracker.debugPos; eyeBall.transform.rotation = eyeTracker.debugOri; }
-
-            eyeValid = eyeTracker.EyeData.Item2.verbose_data.left.GetValidity(SingleEyeDataValidity.SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY);
-            eyeValid2 = eyeTracker.EyeData.Item2.verbose_data.right.GetValidity(SingleEyeDataValidity.SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY);
-
+            SimPoseSample sample = head.Read(trackingOrigin);
+            headTracker.headTimestamp = sample.IsValid ? sample.TimestampSeconds : -1;
+            headTracker.headPosition = sample.WorldPose.position;
+            headTracker.headRotation = sample.WorldPose.rotation;
+            RecordPose("HMD_Tracking", sample);
         }
-        // All other tracking done with openXR
-        if (vrInitDone == true)
+        if (trackLeftController)
         {
-            if (trackHead)
-                trackingHead();
-            if (trackLeftController)
-                trackingLeftController();
-            if (trackRightController)
-                trackingRightController();
-            foreach (var tracker in usedTrackers)
-            {
-                if (tracker.used)
-                {
-                    trackingTrackers();
-                    break;
-                }
-            }
+            SimPoseSample sample = left.Read(trackingOrigin);
+            leftControllerTracker.leftControllerTimestamp = sample.IsValid ? sample.TimestampSeconds : -1;
+            leftControllerTracker.leftControllerPosition = sample.WorldPose.position;
+            leftControllerTracker.leftControllerRotation = sample.WorldPose.rotation;
+            RecordPose("LeftController_Tracking", sample);
         }
-
-        // change the position of the eyeBall to visualize the functionality eye tracking
-        //Vector3 gazeDirection = eyeData.verbose_data.combined.eye_data.gaze_direction_normalized.normalized;
-        //gazeDirection.x = -gazeDirection.x;
-        //Vector3 direction = main_camera.transform.rotation * gazeDirection * 1;
-        //Vector3 newPosition = main_camera.transform.position + eyeData.verbose_data.combined.eye_data.gaze_origin_mm * 0.001f + direction;
-        //eyeBall.transform.position = newPosition;
-}
-
-    // unregister eye data callback and end receiving over udp when necessary
-    protected virtual void OnDisable() { S_activateLogging = false; CancelInvoke(); Release(); }
-
-    protected virtual void OnApplicationQuit() { Release(); }
-
-    /// <summary>
-    /// Release callback thread when disabled or quit
-    /// </summary>
-    private static void Release()
-    {
-        if (eye_callback_registered == true)
+        if (trackRightController)
         {
-            SRanipal_Eye.WrapperUnRegisterEyeDataCallback(Marshal.GetFunctionPointerForDelegate(eyeCallbackDelegate));
-            eye_callback_registered = false;
+            SimPoseSample sample = right.Read(trackingOrigin);
+            rightControllerTracker.rightControllerTimestamp = sample.IsValid ? sample.TimestampSeconds : -1;
+            rightControllerTracker.rightControllerPosition = sample.WorldPose.position;
+            rightControllerTracker.rightControllerRotation = sample.WorldPose.rotation;
+            RecordPose("RightController_Tracking", sample);
+        }
+        foreach (TrackerLog binding in usedTrackers)
+        {
+            if (!binding.used) continue;
+            if (!trackers.TryGetValue(binding.pos, out SimXrPoseReader reader))
+            {
+                reader = new SimXrPoseReader((InputDeviceCharacteristics)binding.pos);
+                trackers.Add(binding.pos, reader);
+            }
+            SimPoseSample sample = reader.Read(trackingOrigin);
+            if (!trackerTrackers.TryGetValue(binding.pos.ToString(), out TrackerTracking state))
+                trackerTrackers.Add(binding.pos.ToString(), state = new TrackerTracking());
+            state.trackerTimestamp = sample.IsValid ? sample.TimestampSeconds : -1;
+            state.trackerPosition = sample.WorldPose.position;
+            state.trackerRotation = sample.WorldPose.rotation;
+            RecordPose(binding.pos.ToString(), sample);
         }
     }
 
-    /// <summary>
-    /// Required class for IL2CPP scripting backend support
-    /// </summary>
-    internal class MonoPInvokeCallbackAttribute : System.Attribute
+    protected virtual void LateUpdate()
     {
-        public MonoPInvokeCallbackAttribute() { }
-    }
-
-    /// <summary>
-    /// Eye tracking data callback thread.
-    /// Reports data at ~120hz
-    /// MonoPInvokeCallback attribute required for IL2CPP scripting backend
-    /// </summary>
-    /// <param name="eye_data">Reference to latest eye_data</param>
-    [MonoPInvokeCallback]
-    private static void EyeCallback(ref EyeData eye_data)
-    {
-        if (isEyeCallbackWorking == false)
+        ResetGaze();
+        if (!trackEyes) { EyeStatus = "Disabled"; return; }
+        SimGazeSample sample = default;
+        bool valid = gazeSource != null && gazeSource.TryGetLatest(maximumGazeAgeSeconds, out sample);
+        if (!valid && fallbackGazeSource != null)
+            valid = fallbackGazeSource.TryGetLatest(maximumGazeAgeSeconds, out sample);
+        gazeValid = valid;
+        ActiveGazeSource = valid ? sample.Source : "None";
+        EyeStatus = valid ? "Valid" : "Unavailable or stale";
+        LeftEyeValidity = valid ? sample.LeftEyeValid : null;
+        RightEyeValidity = valid ? sample.RightEyeValid : null;
+        // Unknown per-eye validity must not be presented as a measured true value.
+        eyeValid = LeftEyeValidity == true;
+        eyeValid2 = RightEyeValidity == true;
+        if (valid)
         {
-            isEyeCallbackWorking = true;
-            UnityEngine.Debug.Log("Eye Callback is working!");
-        }
-
-        lock (eyeLock)
-        {
-            double lastUpdateTime = Now;
-
-            // eye data: timestamp, eyedata
-            eyeTracker.EyeData = (lastUpdateTime, eye_data);
-
-            if (S_activateLogging)
+            TrackingROI(sample);
+            if (eyeBall != null)
             {
-                string addBuffer = lastUpdateTime.ToString() + "," + eye_data.timestamp.ToString() + "," + eye_data.verbose_data.combined.eye_data.gaze_direction_normalized.normalized.x.ToString() + "," + eye_data.verbose_data.combined.eye_data.gaze_direction_normalized.normalized.y.ToString() + "," + eye_data.verbose_data.combined.eye_data.gaze_direction_normalized.normalized.z.ToString() + "," + eye_data.verbose_data.combined.eye_data.gaze_origin_mm.x.ToString() + "," + eye_data.verbose_data.combined.eye_data.gaze_origin_mm.y.ToString() + "," + eye_data.verbose_data.combined.eye_data.gaze_origin_mm.z.ToString() + "," + eye_data.verbose_data.combined.convergence_distance_validity.ToString() + "," + eye_data.verbose_data.combined.convergence_distance_mm.ToString() + "," +
-                    eye_data.verbose_data.right.eye_data_validata_bit_mask.ToString() + "," + eye_data.verbose_data.right.gaze_direction_normalized.normalized.x.ToString() + "," + eye_data.verbose_data.right.gaze_direction_normalized.normalized.y.ToString() + "," + eye_data.verbose_data.right.gaze_direction_normalized.normalized.z.ToString() + "," + eye_data.verbose_data.right.pupil_diameter_mm.ToString() + "," + eye_data.verbose_data.right.eye_openness.ToString() + "," + eye_data.verbose_data.right.pupil_position_in_sensor_area.x.ToString() + "," + eye_data.verbose_data.right.pupil_position_in_sensor_area.y.ToString() + "," + eye_data.verbose_data.left.eye_data_validata_bit_mask.ToString() + "," + eye_data.verbose_data.left.gaze_direction_normalized.normalized.x.ToString() + "," + eye_data.verbose_data.left.gaze_direction_normalized.normalized.y.ToString() + "," + eye_data.verbose_data.left.gaze_direction_normalized.normalized.z.ToString() + "," +
-                    eye_data.verbose_data.left.pupil_diameter_mm.ToString() + "," + eye_data.verbose_data.left.eye_openness.ToString() + "," + eye_data.verbose_data.left.pupil_position_in_sensor_area.x.ToString() + "," + eye_data.verbose_data.left.pupil_position_in_sensor_area.y.ToString() +
-                    Environment.NewLine;
-                LoggingManager.AddToBuffer("Eye_Tracking", addBuffer);
+                eyeBall.transform.SetPositionAndRotation(sample.WorldRay.GetPoint(0.5f), Quaternion.LookRotation(sample.WorldRay.direction));
+                eyeBall.SetActive(true);
             }
         }
+        RecordGaze(sample, valid);
     }
 
-    // access head tracking data and write to file
-    private void trackingHead()
+    bool CanLog()
     {
-        if (headDevices.Count == 0) return;
-        UnityEngine.Debug.Assert(headDevices.Count != 0, "No HEAD Device has been found!");
-        UnityEngine.Debug.Assert(headDevices.Count == 1, "More than one HEAD Device has been found!");
-
-        headDevices[0].TryGetFeatureValue(CommonUsages.devicePosition, out headTracker.headPosition);
-        headDevices[0].TryGetFeatureValue(CommonUsages.deviceRotation, out headTracker.headRotation);
-
-        double lastUpdateTime = Now;
-        headTracker.headTimestamp = lastUpdateTime;
-
-        if (S_activateLogging)
+        if (!activateLogging) return false;
+        if (LoggingManager.OutputDirectory != null) return true;
+        if (!warnedMissingLogger)
         {
-            string addBuffer = lastUpdateTime.ToString() + "," + headTracker.headPosition.x.ToString() + "," + headTracker.headPosition.y.ToString() + "," + headTracker.headPosition.z.ToString() + "," + headTracker.headRotation.w.ToString() + "," + headTracker.headRotation.x.ToString() + "," + headTracker.headRotation.y.ToString() + "," + headTracker.headRotation.z.ToString()
-            + Environment.NewLine;
-            LoggingManager.AddToBuffer("HMD_Tracking", addBuffer);
+            Debug.LogWarning("Acquisition is running without a session logger; samples are not being recorded.", this);
+            warnedMissingLogger = true;
         }
+        return false;
     }
 
-    // access left controller tracking data and write to file
-    private void trackingLeftController()
+    void RecordPose(string name, SimPoseSample sample)
     {
-        if (leftControllerDevices.Count == 0) return;
-        UnityEngine.Debug.Assert(leftControllerDevices.Count != 0, "No Left Controller Devices has been found!");
-        UnityEngine.Debug.Assert(leftControllerDevices.Count <= 1, "More than one LEFT CONTROLLER Device has been found!");
-
-        leftControllerDevices[0].TryGetFeatureValue(CommonUsages.devicePosition, out leftControllerTracker.leftControllerPosition);
-        leftControllerDevices[0].TryGetFeatureValue(CommonUsages.deviceRotation, out leftControllerTracker.leftControllerRotation);
-
-        double lastUpdateTime = Now;
-        leftControllerTracker.leftControllerTimestamp = lastUpdateTime;
-
-        if (S_activateLogging)
-        {
-            string addBuffer = lastUpdateTime.ToString() + "," + leftControllerTracker.leftControllerPosition.x.ToString() + "," + leftControllerTracker.leftControllerPosition.y.ToString() + "," + leftControllerTracker.leftControllerPosition.z.ToString() + "," + leftControllerTracker.leftControllerRotation.w.ToString() + "," + leftControllerTracker.leftControllerRotation.x.ToString() + "," + leftControllerTracker.leftControllerRotation.y.ToString() + "," + leftControllerTracker.leftControllerRotation.z.ToString()
-                + Environment.NewLine;
-            LoggingManager.AddToBuffer("LeftController_Tracking", addBuffer);
-        }
+        if (!CanLog()) return;
+        LoggingManager.CreateNewLog(name, PoseHeader);
+        string values = sample.IsValid ? PoseValues(sample.LocalPose) + "," + PoseValues(sample.WorldPose) : new string(',', 13);
+        LoggingManager.AddToBuffer(name, FormattableString.Invariant($"{sample.TimestampSeconds},{sample.Availability},{values}\n"));
     }
 
-    // access right controller tracking data and write to file
-    private void trackingRightController()
+    static string PoseValues(Pose pose)
+        => FormattableString.Invariant($"{pose.position.x},{pose.position.y},{pose.position.z},{pose.rotation.w},{pose.rotation.x},{pose.rotation.y},{pose.rotation.z}");
+
+    void RecordGaze(SimGazeSample sample, bool valid)
     {
-        if (rightControllerDevices.Count == 0) return;
-        UnityEngine.Debug.Assert(rightControllerDevices.Count != 0, "No Right Controller Devices has been found!");
-        UnityEngine.Debug.Assert(rightControllerDevices.Count <= 1, "More than one RIGHT CONTROLLER Device has been found!");
-
-        rightControllerDevices[0].TryGetFeatureValue(CommonUsages.devicePosition, out rightControllerTracker.rightControllerPosition);
-        rightControllerDevices[0].TryGetFeatureValue(CommonUsages.deviceRotation, out rightControllerTracker.rightControllerRotation);
-
-        double lastUpdateTime = Now;
-        rightControllerTracker.rightControllerTimestamp = lastUpdateTime;
-
-        if (S_activateLogging)
-        {
-            string addBuffer = lastUpdateTime.ToString() + "," + rightControllerTracker.rightControllerPosition.x.ToString() + "," + rightControllerTracker.rightControllerPosition.y.ToString() + "," + rightControllerTracker.rightControllerPosition.z.ToString() + "," + rightControllerTracker.rightControllerRotation.w.ToString() + "," + rightControllerTracker.rightControllerRotation.x.ToString() + "," + rightControllerTracker.rightControllerRotation.y.ToString() + "," + rightControllerTracker.rightControllerRotation.z.ToString()
-                + Environment.NewLine;
-            LoggingManager.AddToBuffer("RightController_Tracking", addBuffer);
-        }
+        if (!CanLog()) return;
+        LoggingManager.CreateNewLog("Gaze_Tracking", GazeHeader);
+        string values = valid ? RayValues(sample.LocalRay) + "," + RayValues(sample.WorldRay) + "," +
+            sample.LeftEyeValid?.ToString() + "," + sample.RightEyeValid?.ToString() : new string(',', 13);
+        LoggingManager.AddToBuffer("Gaze_Tracking", FormattableString.Invariant($"{(valid ? sample.TimestampSeconds : Now)},{(valid ? sample.Source : "None")},{(valid ? sample.LocalFrame : "")},{(valid ? "Valid" : "UnavailableOrStale")},{values}\n"));
     }
 
-    // access tracking data of external trackers and write to file
-    private void trackingTrackers()
+    static string RayValues(Ray ray)
+        => FormattableString.Invariant($"{ray.origin.x},{ray.origin.y},{ray.origin.z},{ray.direction.x},{ray.direction.y},{ray.direction.z}");
+
+    void RecordRawEyes(double time, EyeData data)
     {
-
-
-        double lastUpdateTime = Now;
-
-        // Iterate over all the trackers
-        for (int i = 0; i < usedTrackers.Count; ++i)
-        {
-            // Check if the corresponding tracker is supposed to be tracked (box checked in insprector)
-            if (usedTrackers[i].used)
-            {
-                // Resolve the role explicitly; device enumeration order is not a tracker identity.
-                var devicesForRole = new List<InputDevice>();
-                InputDevices.GetDevicesWithCharacteristics((InputDeviceCharacteristics)usedTrackers[i].pos, devicesForRole);
-                if (devicesForRole.Count == 0) continue;
-                devicesForRole[0].TryGetFeatureValue(CommonUsages.devicePosition, out trackerTrackers[usedTrackers[i].pos.ToString()].trackerPosition);
-                devicesForRole[0].TryGetFeatureValue(CommonUsages.deviceRotation, out trackerTrackers[usedTrackers[i].pos.ToString()].trackerRotation);
-
-                if (S_activateLogging)
-                {
-                    string addBuffer = lastUpdateTime.ToString() + "," + trackerTrackers[usedTrackers[i].pos.ToString()].trackerPosition.x.ToString() + "," + trackerTrackers[usedTrackers[i].pos.ToString()].trackerPosition.y.ToString() + "," + trackerTrackers[usedTrackers[i].pos.ToString()].trackerPosition.z.ToString() + "," + trackerTrackers[usedTrackers[i].pos.ToString()].trackerRotation.w.ToString() + "," + trackerTrackers[usedTrackers[i].pos.ToString()].trackerRotation.x.ToString() + "," + trackerTrackers[usedTrackers[i].pos.ToString()].trackerRotation.y.ToString() + "," + trackerTrackers[usedTrackers[i].pos.ToString()].trackerRotation.z.ToString() + Environment.NewLine;
-                    LoggingManager.AddToBuffer(usedTrackers[i].pos.ToString(), addBuffer);
-                }
-            }
-        }
+        eyeTracker.EyeData = (time, data);
+        isEyeCallbackWorking = true;
+        if (!CanLog()) return;
+        LoggingManager.CreateNewLog("Eye_Tracking", SIMHeader.eyeHeader);
+        var combined = data.verbose_data.combined;
+        var l = data.verbose_data.left;
+        var r = data.verbose_data.right;
+        // Preserve the SDK's native raw axes/mm and device timestamp in this legacy CSV only.
+        object[] values = { time, data.timestamp,
+            combined.eye_data.gaze_direction_normalized.x, combined.eye_data.gaze_direction_normalized.y, combined.eye_data.gaze_direction_normalized.z,
+            combined.eye_data.gaze_origin_mm.x, combined.eye_data.gaze_origin_mm.y, combined.eye_data.gaze_origin_mm.z,
+            combined.convergence_distance_validity, combined.convergence_distance_mm,
+            r.eye_data_validata_bit_mask, r.gaze_direction_normalized.x, r.gaze_direction_normalized.y, r.gaze_direction_normalized.z,
+            r.pupil_diameter_mm, r.eye_openness, r.pupil_position_in_sensor_area.x, r.pupil_position_in_sensor_area.y,
+            l.eye_data_validata_bit_mask, l.gaze_direction_normalized.x, l.gaze_direction_normalized.y, l.gaze_direction_normalized.z,
+            l.pupil_diameter_mm, l.eye_openness, l.pupil_position_in_sensor_area.x, l.pupil_position_in_sensor_area.y };
+        LoggingManager.AddToBuffer("Eye_Tracking", string.Join(",", Array.ConvertAll(values, value => Convert.ToString(value, CultureInfo.InvariantCulture))) + "\n");
     }
 
-    private void TrackingROI(double timestamp, EyeData eyedata)
+    void TrackingROI(SimGazeSample sample)
     {
-        // Use layer mask 10 for regions of interest
-        var layerMask = 1 << 10;
-
-        var anipalOrigin = eyedata.verbose_data.combined.eye_data.gaze_origin_mm * 0.001f;
-        var leftHandedOrigin = new Vector3(-anipalOrigin.x, anipalOrigin.y, anipalOrigin.z);
-
-        // Sensor origin is in headset-local millimeters; convert once to world meters.
-
-        if (main_camera == null) return;
-        var origin = main_camera.transform.TransformPoint(leftHandedOrigin);
-        var anipalDirection = eyedata.verbose_data.combined.eye_data.gaze_direction_normalized;
-        var leftHandedDirection = new Vector3(-anipalDirection.x, anipalDirection.y, anipalDirection.z);
-        var worldSpaceDirection = main_camera.transform.rotation * leftHandedDirection;
-
-        var hits = Physics.SphereCastAll(origin, spherecastRadius, worldSpaceDirection, 10f, layerMask);
-
+        Ray ray = sample.WorldRay;
+        RaycastHit[] hits = Physics.SphereCastAll(ray, spherecastRadius, 10f, 1 << 10);
         lookingAtHand = hits.Any(hit => hit.collider.CompareTag("hand_collider"));
         lookingAtObject = hits.Any(hit => hit.collider.CompareTag("object_collider"));
         lookingAtTarget = hits.Any(hit => hit.collider.CompareTag("target_collider"));
+        if (!CanLog()) return;
+        LoggingManager.CreateNewLog("ROI", SIMHeader.roiHeader);
+        string properties = string.Join(";", hits.Select(hit => hit.collider.gameObject.name.Replace("\"", "\"\"") + ":" + hit.distance.ToString(CultureInfo.InvariantCulture)));
+        LoggingManager.AddToBuffer("ROI", FormattableString.Invariant($"{sample.TimestampSeconds},{lookingAtHand},{lookingAtObject},{lookingAtTarget},\"{properties}\"\n"));
+    }
 
-        // log all objects which are "hits" and their distance
-        string hitsProperties = "";
+    void ResetGaze()
+    {
+        gazeValid = eyeValid = eyeValid2 = lookingAtHand = lookingAtObject = lookingAtTarget = false;
+        LeftEyeValidity = RightEyeValidity = null;
+        if (eyeBall != null) eyeBall.SetActive(false);
+    }
 
-        if (hits.Length > 0)
-        {
-            foreach (var hit in hits)
-            {
-                hitsProperties += "[" + hit.collider.gameObject.name + ";" + hit.distance.ToString() + "] ";
-            }
-            hitsProperties = hitsProperties.Remove(hitsProperties.Length - 1);
-        }
-        hitsProperties = hitsProperties.Insert(0, "[");
-        hitsProperties = hitsProperties.Insert(hitsProperties.Length, "]");
-
-        string addBuffer = $"{timestamp},{lookingAtHand},{lookingAtObject},{lookingAtTarget},{hitsProperties}{Environment.NewLine}";
-        if (S_activateLogging) LoggingManager.AddToBuffer("ROI", addBuffer);
-
-        // Debug view
-        eyeTracker.debugPos = origin + (worldSpaceDirection * 0.5f);
-        eyeTracker.debugOri = Quaternion.LookRotation(worldSpaceDirection);
+    protected virtual void OnDisable()
+    {
+        if (rawEyeSource != null) rawEyeSource.RawSampleReceived -= RecordRawEyes;
+        if (owner != this) return;
+        if (gazeSource != null) gazeSource.enabled = false;
+        if (fallbackGazeSource != null) fallbackGazeSource.enabled = false;
+        ResetGaze();
+        EyeStatus = "Disabled";
+        ActiveGazeSource = "None";
+        isEyeCallbackWorking = trackEyesCallback = S_activateLogging = false;
+        owner = null;
     }
 
     public void CalibrateEyes()
     {
-        SRanipal_Eye_v2.LaunchEyeCalibration();
+        if (rawEyeSource == null || !rawEyeSource.Calibrate())
+            Debug.LogWarning("Eye calibration requires an active supported SRanipal source. For OpenXR, calibrate through the headset runtime.", this);
     }
+
 }

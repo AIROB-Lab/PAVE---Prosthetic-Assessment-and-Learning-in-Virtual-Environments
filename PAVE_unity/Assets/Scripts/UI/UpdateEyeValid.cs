@@ -1,19 +1,21 @@
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
+/// <summary>Reports missing gaze honestly; combined OpenXR gaze has no per-eye validity flags.</summary>
+[RequireComponent(typeof(TextMeshProUGUI))]
 public class UpdateEyeValid : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
+    TextMeshProUGUI label;
+    PaveTracking tracking;
+    void Awake()
     {
-        
+        label = GetComponent<TextMeshProUGUI>();
+        tracking = FindFirstObjectByType<PaveTracking>();
     }
-
-    // Update is called once per frame
     void Update()
     {
-        this.GetComponent<TextMeshProUGUI>().text = $"Eye Valid: {StreamlinedInputManager.eyeValid} {StreamlinedInputManager.eyeValid2}";
+        string left = tracking != null ? tracking.LeftEyeValidity?.ToString() ?? "n/a" : "n/a";
+        string right = tracking != null ? tracking.RightEyeValidity?.ToString() ?? "n/a" : "n/a";
+        label.text = $"Gaze: {PaveTracking.EyeStatus} ({PaveTracking.ActiveGazeSource}) | Left: {left}, Right: {right}";
     }
 }
