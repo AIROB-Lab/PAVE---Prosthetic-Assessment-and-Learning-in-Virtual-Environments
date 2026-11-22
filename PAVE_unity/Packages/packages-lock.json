@@ -356,6 +356,15 @@
       "source": "local",
       "dependencies": {}
     },
+    "org.airob.sim.tracking": {
+      "version": "file:../../Dependencies/SIM/Packages/org.airob.sim.tracking",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "org.airob.sim": "0.2.0",
+        "com.unity.modules.xr": "1.0.0"
+      }
+    },
     "org.mujoco": {
       "version": "file:org.mujoco",
       "depth": 0,

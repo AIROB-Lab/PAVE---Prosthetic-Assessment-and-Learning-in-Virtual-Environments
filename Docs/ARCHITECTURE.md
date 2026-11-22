@@ -17,7 +17,7 @@ SIM's feature/modular-unity-runtime branch contains the upstream package. PAVE p
 ## Components and ownership
 
 - StreamlinedInputManager owns PAVE's input settings and drains SIM packets on the main thread. Its original name and fields preserve scene compatibility. It no longer implements packet decoding or opens native socket callbacks itself.
-- PaveTracking owns the legacy XR and SRanipal acquisition adapter. It is separated from transport, resolves tracker roles explicitly and handles missing devices. Eye SDK integration remains in this adapter; the upstream SIM runtime itself has no Unity/eye SDK dependency.
+- PaveTracking owns PAVE recording, provider selection and gaze regions. The optional SIM tracking package owns generic read-only XR acquisition. PaveSranipalEyeSource isolates the HTC SDK and callback queue. See RESEARCH_TRACKING.md for setup, unchanged HTC gaze origins, coordinate frames, CSV changes and verification.
 - HandController owns normalized actuator/mocap bindings and applies them in MjScene.preUpdateEvent. It does not know about kitchen levels or WPS exercises. Command source, delay settings and axis restrictions are explicit.
 - HandCommandSource is the small optional input boundary. ManualHandCommandSource provides Inspector values in [-1,1]; an unassigned source uses SIM. A future replay source can implement the same TryRead method without changing actuation.
 - HandJointState reads a directly assigned MuJoCo hinge: PositionRad and VelocityRadPerSecond are measured values. GetValueForDOA deliberately remains a command-value API for existing external feedback contracts. Changing those contracts is a separate protocol decision.
