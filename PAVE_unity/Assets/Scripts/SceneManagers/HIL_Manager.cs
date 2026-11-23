@@ -198,6 +198,7 @@ public class HIL_Manager : MonoBehaviour
 
     public HIL_mode currentMode;   // Train vs Test - set in the Inspector/by the scene setup
     public HIL_env currentEnv;     // which sub-environment (TAC/LimbPos/Interact) is active
+    public bool pauseTask = false;   // true = Interact task frozen (ghost stays still), e.g. during calibration
 
     public InteractTaskConfig currentInteractTaskConfig;  // the randomly generated start/target shelves+poses for the current Interact trial
     public HIL_phases currentPhase;                        // phase the state machine is currently in (applied at the end of Update via update_currentphase)
@@ -370,6 +371,7 @@ public class HIL_Manager : MonoBehaviour
     /// </summary>
     private void PerformInteractLoop()
     {
+        if (pauseTask) return;   // task frozen -> no phase change, ghost does not move
         // ----- START OF HIL PHASES ----- // ToDo?: Event-based instead of checking every cycle
         switch (currentPhase)
         {
@@ -531,10 +533,60 @@ public class HIL_Manager : MonoBehaviour
     /// combination, then either time out (failure handling not yet distinguished) or succeed.
     /// Only uses the None/Reach/Grasp phases.
     /// </summary>
+    //private void PerformLimbPosLoop()
+    //{
+    //    switch (currentPhase)
+    //    {
+    //        case HIL_phases.None:
+
+    //            // Start new random task config
+    //            // "2" = randomize up to 2 DOAs as part of this task, in addition to the spatial target
+    //            this.NewRandomLimbPosTask(2);
+
+    //            // move to next phase
+    //            next_currPhase = HIL_phases.Reach;
+
+    //            break;
+
+    //        case HIL_phases.Reach:
+
+    //            // check if distance to start is smaller then threshold
+    //            // Once close enough to the target position, move to Grasp and start a timeout timer
+    //            if (currentStats.hdToStart.magnitude <= GRASP_DISTANCE)
+    //            {
+    //                next_currPhase = HIL_phases.Grasp;
+    //                timeoutStart = StreamlinedInputManager.Now;
+
+    //            }
+    //            break;
+
+    //        case HIL_phases.Grasp:
+    //            // if timout or target reach generate new one => just timout for now
+    //            // After holding position for timeoutTime seconds, consider the trial done and reset to None
+    //            if (StreamlinedInputManager.Now - timeoutStart > timeoutTime)
+    //            {
+    //                next_currPhase = HIL_phases.None;
+    //                this.terminal_state = 1;                                    // added teminal state
+    //            }
+
+    //            break;
+
+    //    }
+    //}
+
+
     private void PerformLimbPosLoop()
     {
+        // task frozen (e.g. during calibration): ghost stays, timers restart after unpausing
+        if (pauseTask)
+        {
+            timeoutStart = StreamlinedInputManager.Now;
+            dwellTimeStart = StreamlinedInputManager.Now;
+            return;
+        }
         switch (currentPhase)
         {
+
             case HIL_phases.None:
 
                 // Start new random task config
@@ -544,33 +596,56 @@ public class HIL_Manager : MonoBehaviour
                 // move to next phase
                 next_currPhase = HIL_phases.Reach;
 
+                // trial timer starts now (like TAC)
+                timeoutStart = StreamlinedInputManager.Now;
+                dwellTimeStart = StreamlinedInputManager.Now;
+
                 break;
 
             case HIL_phases.Reach:
 
-                // check if distance to start is smaller then threshold
-                // Once close enough to the target position, move to Grasp and start a timeout timer
+                // out of time before reaching the position -> failure
+                if (StreamlinedInputManager.Now - timeoutStart > timeoutTime)
+                {
+                    next_currPhase = HIL_phases.None;
+                    this.terminal_state = 2;                                    // failure
+                    break;
+                }
+
+                // close enough to the ghost position -> Grasp (now the DoFs must match too)
                 if (currentStats.hdToStart.magnitude <= GRASP_DISTANCE)
                 {
                     next_currPhase = HIL_phases.Grasp;
-                    timeoutStart = StreamlinedInputManager.Now;
-
+                    dwellTimeStart = StreamlinedInputManager.Now;
                 }
                 break;
 
             case HIL_phases.Grasp:
-                // if timout or target reach generate new one => just timout for now
-                // After holding position for timeoutTime seconds, consider the trial done and reset to None
+
+                // position AND all DoFs must be in target; otherwise restart the hold timer
+                bool inPosition = currentStats.hdToStart.magnitude <= GRASP_DISTANCE;
+                if (!inPosition || !curr_in_tgt(0.2))
+                {
+                    dwellTimeStart = StreamlinedInputManager.Now;
+                }
+
                 if (StreamlinedInputManager.Now - timeoutStart > timeoutTime)
                 {
+                    // ran out of time without holding position + DoFs long enough -> failure
                     next_currPhase = HIL_phases.None;
-                    this.terminal_state = 1;                                    // added teminal state
+                    this.terminal_state = 2;                                    // failure
+                }
+                else if (StreamlinedInputManager.Now - dwellTimeStart >= dwellTime)
+                {
+                    // held position + DoFs for dwellTime -> success
+                    next_currPhase = HIL_phases.None;
+                    this.terminal_state = 1;                                    // success
                 }
 
                 break;
-
         }
     }
+
     public double timeoutTime;     // seconds a Reach attempt has before it's considered timed out (TAC/LimbPos)
     public double dwellTime;       // seconds the target must be held within tolerance before TAC counts it as success
     double timeoutStart;           // timestamp (StreamlinedInputManager.Now) when the current timeout window started
@@ -648,13 +723,13 @@ public class HIL_Manager : MonoBehaviour
             {
                 // the interact task has a separat config to keep track of the more complex structure, use start and target shelfs
                 // Vector from the prosthetic palm to the start/target shelf positions
-                currentStats.hdToStart = currentInteractTaskConfig.startShelf.transform.position - palm.transform.position;
-                currentStats.hdToTarget = currentInteractTaskConfig.targetShelf.transform.position - palm.transform.position;
+                currentStats.hdToStart = ShelfPos(currentInteractTaskConfig.startShelf) - palm.transform.position;
+                currentStats.hdToTarget = ShelfPos(currentInteractTaskConfig.targetShelf) - palm.transform.position;
 
                 // Compute path completion ratio
                 // Top surface of the start/target shelf (shelf center + half its height)
-                Vector3 startShelveTopPos = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
-                Vector3 targetShelveTopPos = currentInteractTaskConfig.targetShelf.transform.position + new Vector3(0, currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
+                Vector3 startShelveTopPos = ShelfPos(currentInteractTaskConfig.startShelf) + new Vector3(0, currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
+                Vector3 targetShelveTopPos = ShelfPos(currentInteractTaskConfig.targetShelf) + new Vector3(0, currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
                 // Bottom of the transfer box, accounting for its current rotation
                 Vector3 TBBottomPos = this.TB.transform.position - this.TB.transform.rotation * new Vector3(0, this.TB.GetComponentInChildren<MjGeom>().Box.Extents.y, 0);
                 currentStats.TBToStart = startShelveTopPos - TBBottomPos;
@@ -809,7 +884,7 @@ public class HIL_Manager : MonoBehaviour
         {
             // as long as this does not make any problems, set pos and ori directly
             // Place the shadow box directly on top of the target shelf
-            this.shdwTb_weld.transform.position = currentInteractTaskConfig.targetShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
+            this.shdwTb_weld.transform.position = ShelfPos(currentInteractTaskConfig.targetShelf) + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
 
             // set TB orientation
             this.shdwTb_weld.transform.rotation = currentInteractTaskConfig.targetShelf.transform.rotation * Quaternion.Euler(0, currentInteractTaskConfig.tbYRotationTarget, 0);
@@ -835,7 +910,7 @@ public class HIL_Manager : MonoBehaviour
 
             // change position and adjust for rotation
             // Note: uses Extents.x here (box's now-vertical side length after the 90-degree rotation) instead of Extents.y
-            this.shdwTb_weld.transform.position = currentInteractTaskConfig.targetShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
+            this.shdwTb_weld.transform.position = ShelfPos(currentInteractTaskConfig.targetShelf) + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
 
             // rotate WPS into supination to counterbalance
             GhstHandController.OverwriteCurrVal(DOA.WPS, 1);
@@ -862,7 +937,7 @@ public class HIL_Manager : MonoBehaviour
         if (currentInteractTaskConfig.startPose == InteractTaskConfig.TbOris.straight)
         {
             // as long as this does not make any problems, set pos and ori directly
-            this.shdwTb_weld.transform.position = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
+            this.shdwTb_weld.transform.position = ShelfPos(currentInteractTaskConfig.startShelf) + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
 
             // set TB orientation
             this.shdwTb_weld.transform.rotation = currentInteractTaskConfig.startShelf.transform.rotation * Quaternion.Euler(0, currentInteractTaskConfig.tbYRotationStart, 0);
@@ -881,7 +956,7 @@ public class HIL_Manager : MonoBehaviour
 
 
             // change position and adjust for rotation
-            this.shdwTb_weld.transform.position = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
+            this.shdwTb_weld.transform.position = ShelfPos(currentInteractTaskConfig.startShelf) + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentInteractTaskConfig.targetShelf.GetComponent<MjGeom>().Box.Extents.y, 0);
 
             // rotate WPS into supination to counterbalance
             GhstHandController.OverwriteCurrVal(DOA.WPS, 90 * Mathf.Deg2Rad);
@@ -915,7 +990,7 @@ public class HIL_Manager : MonoBehaviour
         if (currentInteractTaskConfig.startPose == InteractTaskConfig.TbOris.straight)
         {
             // as long as this does not make any problems, set pos and ori directly // using shdwTb geom because it consists of a single box
-            newPos = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y + 0.1f, 0);
+            newPos = ShelfPos(currentInteractTaskConfig.startShelf) + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.y + currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y + 0.1f, 0);
 
             // set TB orientation
             newRot = currentInteractTaskConfig.startShelf.transform.rotation * Quaternion.Euler(0, currentInteractTaskConfig.tbYRotationStart, 0);
@@ -926,7 +1001,7 @@ public class HIL_Manager : MonoBehaviour
             newRot = currentInteractTaskConfig.startShelf.transform.rotation * Quaternion.Euler(45, 0, 90);
 
             // change position and adjust for rotation
-            newPos = currentInteractTaskConfig.startShelf.transform.position + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y + 0.1f, 0);
+            newPos = ShelfPos(currentInteractTaskConfig.startShelf) + new Vector3(0, this.shdwTb_geom.GetComponentInChildren<MjGeom>().Box.Extents.x + currentInteractTaskConfig.startShelf.GetComponent<MjGeom>().Box.Extents.y + 0.1f, 0);
         }
         // Hide the box while it's being teleported so the player doesn't see it snap/jump
         MeshRenderer[] meshRenderer = TB.transform.GetComponentsInChildren<MeshRenderer>();
@@ -1077,6 +1152,9 @@ public class HIL_Manager : MonoBehaviour
             GhstHandController.OverwriteCurrVal(doa.General.doa, value, true);
         }
     }
+
+    /// <summary>Shelf position at the height chosen in the UI (HeightInputController), not the old MuJoCo height.</summary>
+    private Vector3 ShelfPos(GameObject shelf) => HeightInputController.HeldPosition(shelf.transform);
 
     /// <summary>
     /// Generates a new random LimbPos trial: picks a random shelf as the spatial target, applies
