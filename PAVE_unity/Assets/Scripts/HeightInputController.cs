@@ -2,7 +2,9 @@
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
+using System.Globalization;
 
+[DefaultExecutionOrder(-1000)]   // run before MuJoCo builds its physics model
 public class HeightInputController : MonoBehaviour
 {
     public TMP_InputField topField;
@@ -15,7 +17,7 @@ public class HeightInputController : MonoBehaviour
     [Tooltip("How much each +/- click moves the shelf, in metres (0.01 = 1 cm)")]
     public float step = 0.01f;
 
-    [Header("Initial shelf heights (metres) - applied on Start")]
+    [Header("Initial shelf heights (metres) - applied before Play starts the physics")]
     [Tooltip("If true, force the heights below at startup. If false, keep whatever the shelves already have in the scene.")]
     public bool applyInitialHeightsOnStart = true;
     public float initialBotY = 0.5f;
@@ -24,6 +26,9 @@ public class HeightInputController : MonoBehaviour
 
     [Tooltip("Re-apply the chosen height every frame so the MuJoCo solver can't overwrite it")]
     public bool holdAgainstPhysics = true;
+
+    [Tooltip("Rebuild the MuJoCo physics after a height change during Play, so the physics shelf moves too")]
+    public bool rebuildPhysicsOnChange = true;
 
     [Tooltip("Print how many levels were found for each tier at startup")]
     public bool verbose = false;
@@ -53,6 +58,15 @@ public class HeightInputController : MonoBehaviour
         return level.parent != null ? level.parent.TransformPoint(lp) : lp;
     }
 
+    void Awake()
+    {
+        // set the starting heights BEFORE MuJoCo builds its physics model, so the physics shelves are moved too
+        if (!applyInitialHeightsOnStart) return;
+        SetY(FindAllByName("level_top"), initialTopY);
+        SetY(FindAllByName("level_mid"), initialMidY);
+        SetY(FindAllByName("level_bot"), initialBotY);
+    }
+
     void Start()
     {
         AddTier(topField, "level_top", initialTopY);
@@ -74,7 +88,7 @@ public class HeightInputController : MonoBehaviour
 
         SetY(levels, startY);                       // apply the initial height immediately
         field.onEndEdit.AddListener(text => ApplyText(tier, text));
-        field.SetTextWithoutNotify(startY.ToString("0.###"));
+        field.SetTextWithoutNotify(startY.ToString("0.###", CultureInfo.InvariantCulture));
 
         // make room on the left so typed text doesn't sit under the buttons
         if (field.textViewport != null)
@@ -133,15 +147,30 @@ public class HeightInputController : MonoBehaviour
     {
         tier.targetY += delta;
         SetY(tier.levels, tier.targetY);
-        tier.field.SetTextWithoutNotify(tier.targetY.ToString("0.###"));
+        tier.field.SetTextWithoutNotify(tier.targetY.ToString("0.###", CultureInfo.InvariantCulture));
+        RequestPhysicsRebuild();
     }
 
     void ApplyText(Tier tier, string text)
     {
-        if (!float.TryParse(text, out float h)) { Debug.LogWarning($"'{text}' isn't a valid number."); return; }
+        // accept both 1.2 and 1,2 (German Windows uses a comma as decimal separator)
+        if (!float.TryParse(text.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out float h))
+        {
+            Debug.LogWarning($"'{text}' isn't a valid number.");
+            return;
+        }
         tier.targetY = h;
         SetY(tier.levels, tier.targetY);
-        tier.field.SetTextWithoutNotify(tier.targetY.ToString("0.###"));
+        tier.field.SetTextWithoutNotify(tier.targetY.ToString("0.###", CultureInfo.InvariantCulture));
+        RequestPhysicsRebuild();
+    }
+
+    void RequestPhysicsRebuild()
+    {
+        // ask MuJoCo to rebuild its model from the current scene, so the physics shelves move too
+        if (!rebuildPhysicsOnChange) return;
+        if (Mujoco.MjScene.InstanceExists)
+            Mujoco.MjScene.Instance.SceneRecreationAtLateUpdateRequested = true;
     }
 
     float CurrentY(Transform[] levels)
