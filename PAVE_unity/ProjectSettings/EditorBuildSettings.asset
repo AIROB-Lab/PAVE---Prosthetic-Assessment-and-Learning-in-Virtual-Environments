@@ -8,6 +8,18 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/HIL-IL_TAC_VR.unity
     guid: 89965cfadc7eb1c44a11c7362f82c428
+  - enabled: 1
+    path: Assets/Scenes/Assessments/TargetedBoxAndBlock.unity
+    guid: 53e45345819472d48a1e978dce73dc2b
+  - enabled: 1
+    path: Assets/Scenes/Assessments/BoxAndBlock.unity
+    guid: e59e9da9484adde47a597bb980e1ea67
+  - enabled: 1
+    path: Assets/Scenes/Assessments/ClothespinRelocationUp.unity
+    guid: 0ec10b97090f4ab4a84bb1282704ec73
+  - enabled: 1
+    path: Assets/Scenes/Assessments/ClothespinRelocationDown.unity
+    guid: 2a4dcde8b0e48f74d9de8d31a045c829
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: bc149fc55bef1bd448a63e123043cb1d,
       type: 2}

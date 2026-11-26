@@ -178,3 +178,8 @@ Please do not include participant data, biosignals, or other sensitive study dat
 PAVE is being developed at the [AIROB Lab](https://www.airob.org/) together with research collaborators.
 
 The project uses the MuJoCo physics engine, Unity XR tooling, the virtual Hannes hand model by [Pasquali et al.](https://amsacta.unibo.it/id/eprint/8520/), and `mj-unity-extensions` from the modular-agents project.
+
+
+## Assessment scenes
+
+Assessment-only Box and Block, targeted Box and Block, and clothespin relocation scene candidates are described in [the assessment guide](Docs/ASSESSMENT_SCENES.md). It covers fixed-controller setup, scoring, recording, virtual-protocol differences and validation status.
